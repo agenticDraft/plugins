@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "agenticdraft": {
+      "source": {
+        "source": "github",
+        "repo": "agenticDraft/plugins"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "no-hallucinations@agenticdraft": true
+  }
+}
