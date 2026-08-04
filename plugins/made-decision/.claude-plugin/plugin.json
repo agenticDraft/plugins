@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "made-decision",
+  "displayName": "Decision Maker",
+  "description": "Structured decision-making coach using the OOCEMR framework (Outcomes, Options, Consequences, Evaluate, Mitigate, Resolve).",
+  "version": "1.0.0",
+  "author": {
+    "name": "agenticDraft"
+  },
+  "homepage": "https://github.com/agenticDraft/plugins",
+  "repository": "https://github.com/agenticDraft/plugins",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "claude-plugin",
+    "agent-skills",
+    "decision-making",
+    "oocemr",
+    "coaching"
+  ]
+}

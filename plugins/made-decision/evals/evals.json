@@ -1,0 +1,49 @@
+[
+  {
+    "name": "implicit-trigger-and-first-step",
+    "skills": ["decision-making"],
+    "query": "I'm thinking about quitting and moving to another company, but I don't know if it's worth it.",
+    "files": [],
+    "expected_behavior": [
+      "Recognizes the dilemma and activates the decision-making skill even though the user didn't explicitly invoke /made-decision:decision-making",
+      "Announces at the start that there are six steps (OOCEMR) so the user knows where they are in the process",
+      "Message opens with the step marker in the format **Step 1/6 — OUTCOMES**",
+      "Asks exactly ONE question in the message, doesn't lay out all six steps at once",
+      "The first question is from the OUTCOMES section and asks for both the goal and the 'why' (motivation), not just the 'what'",
+      "Responds in English",
+      "Doesn't give advice or a recommendation on what to do at this stage (stays an interviewer, not an advisor)"
+    ]
+  },
+  {
+    "name": "pushes-back-on-thin-answers",
+    "skills": ["decision-making"],
+    "query": "I want to change jobs to earn more money. I have two options: stay, or move to another company. Those are my only options.",
+    "files": [],
+    "expected_behavior": [
+      "Doesn't accept 'earn more money' as a finished outcome and asks for specifics: how much, by when, what changes in their life",
+      "Doesn't move to the next step until the current one is actually filled in",
+      "On OPTIONS, pushes for at least three options and reminds them of 'doing nothing' and 'deferring the decision'",
+      "Asks at most 2-3 follow-up questions per step, doesn't drag it out indefinitely",
+      "Still one question per message, with the step marker on the first line",
+      "Doesn't agree by default when an answer has a gap — names it instead"
+    ]
+  },
+  {
+    "name": "honest-summary-may-contradict-choice",
+    "skills": ["decision-making"],
+    "query": "We've been through all six OOCEMR steps, here's a summary of my answers — give me the final summary and your analysis.\n\nOUTCOMES: Security and income stability matter most to me. I have a mortgage (700 EUR/month) and a young child, the goal is for my net income to not fall below the current 2500 EUR and for my job to be secure for the next 2-3 years.\n\nOPTIONS: (A) Stay at my current company (stable, 2500 EUR, boring). (B) Move to a large corporation (3000 EUR, permanent contract). (C) Join a friend's startup for 3500 EUR + equity, but the company has ~8 months of runway left. I hadn't considered 'do nothing' as a deliberate option.\n\nCONSEQUENCES: A — upside is a calm life, downside is stagnation. B — upside is higher pay and security, downside is longer hours. C — upside is getting rich if it works out and learning a lot, downside is being out of a job in 8-10 months and unable to pay the mortgage.\n\nEVALUATE: A success 95%. B success 85%. C success 60% (gut feeling, my friend is an optimist).\n\nMITIGATE: I haven't thought about this much, let's just go straight to the decision.\n\nRESOLVE: I've decided on C, the startup — it's the most exciting option and I don't want to regret not trying.",
+    "files": [],
+    "expected_behavior": [
+      "Gives the decision in one sentence and a distilled summary of all six steps (not retold)",
+      "Separates what is the user's input from what is Claude's conclusion",
+      "Names the contradiction directly: the goal is security/stability, and option C is the riskiest choice",
+      "States that option B (corporation) actually best fits the stated outcome according to this analysis, even though C was chosen",
+      "Flags that the worst-case scenario for option C is NOT survivable/reversible (can't pay the 700 EUR mortgage) — the key question from CONSEQUENCES",
+      "Questions the 60% estimate because it's a 'gut feeling' and the friend is an optimist (weakly grounded probability)",
+      "Notices that MITIGATE was skipped and that 'do nothing'/hybrids weren't considered (e.g. cheaply testing the startup before fully quitting)",
+      "Doesn't turn the summary into approval of the chosen decision",
+      "Proposes a concrete first step with a deadline (this week)",
+      "Offers to save the summary as a file (suggests decisions/<topic>-<YYYY-MM-DD>.md) but does NOT save without asking"
+    ]
+  }
+]
