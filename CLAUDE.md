@@ -42,7 +42,17 @@ There is no test runner in this repo. Each plugin that ships one keeps scripted 
 treat these as the spec to check a skill's behavior against when editing it, not as something
 invoked by a command in this repo.
 
-## Adding a new plugin
+## Adding a new plugin or skill
+
+**Check the official docs before starting, every time — do not rely on memory or on this
+file for exact schema/behavior.** This ecosystem is versioned aggressively; the docs below
+are full of `Requires Claude Code vX.Y.Z` gates on individual fields and behaviors, so
+something that worked last month may have gained a new required field or a new default.
+
+- Plugin structure and authoring: https://code.claude.com/docs/en/plugins
+- Marketplace/manifest schema: https://code.claude.com/docs/en/plugin-marketplaces
+- Skill frontmatter reference (all fields, not just the ones used in this repo so far):
+  https://code.claude.com/docs/en/skills
 
 1. Create `plugins/<name>/.claude-plugin/plugin.json` (`name`, `description`, `version`,
    `author`, `homepage`/`repository` both set to `https://github.com/agenticDraft/plugins`,
