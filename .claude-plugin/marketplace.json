@@ -26,6 +26,26 @@
       "homepage": "https://github.com/agenticDraft/plugins",
       "repository": "https://github.com/agenticDraft/plugins",
       "license": "MIT"
+    },
+    {
+      "name": "made-decision",
+      "displayName": "Decision Maker",
+      "source": "./plugins/made-decision",
+      "description": "Structured decision-making coach using the OOCEMR framework (Outcomes, Options, Consequences, Evaluate, Mitigate, Resolve).",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": [
+        "skills",
+        "coaching",
+        "decision-making",
+        "oocemr"
+      ],
+      "author": {
+        "name": "Zoran Markovic"
+      },
+      "homepage": "https://github.com/agenticDraft/plugins",
+      "repository": "https://github.com/agenticDraft/plugins",
+      "license": "MIT"
     }
   ]
 }
