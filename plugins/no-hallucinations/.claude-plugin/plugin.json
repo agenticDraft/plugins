@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "no-hallucinations",
+  "displayName": "No Hallucinations",
+  "description": "Truthfulness guardrails for every response: no made-up facts or sources, explicit uncertainty, no reflexive agreement.",
+  "version": "1.0.0",
+  "author": {
+    "name": "agenticDraft"
+  },
+  "homepage": "https://github.com/agenticDraft/plugins",
+  "repository": "https://github.com/agenticDraft/plugins",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "claude-plugin",
+    "agent-skills",
+    "no-hallucinations",
+    "honest-answers",
+    "hooks"
+  ]
+}

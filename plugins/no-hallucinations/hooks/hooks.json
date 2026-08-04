@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/inject-rules.sh"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'no-hallucinations: the communication rules injected at the start of this session apply to this response too -- state uncertainty with the claim, do not invent sources, do not claim something works unless you ran it, and disagree when I am wrong.'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

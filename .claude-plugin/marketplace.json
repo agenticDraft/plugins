@@ -1,0 +1,31 @@
+{
+  "name": "agenticdraft",
+  "description": "Claude Code plugins by agenticDraft.",
+  "version": "1.0.0",
+  "owner": {
+    "name": "Zoran Markovic",
+    "url": "https://github.com/agenticDraft"
+  },
+  "plugins": [
+    {
+      "name": "no-hallucinations",
+      "displayName": "No Hallucinations",
+      "source": "./plugins/no-hallucinations",
+      "description": "Truthfulness guardrails for every response: no made-up facts or sources, explicit uncertainty, no reflexive agreement.",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": [
+        "hooks",
+        "skills",
+        "prompting",
+        "honest-answers"
+      ],
+      "author": {
+        "name": "Zoran Markovic"
+      },
+      "homepage": "https://github.com/agenticDraft/plugins",
+      "repository": "https://github.com/agenticDraft/plugins",
+      "license": "MIT"
+    }
+  ]
+}
