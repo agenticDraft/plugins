@@ -82,6 +82,24 @@ only — never hand-edit the hook's injected text separately, or the two will dr
   but changing `marketplace.json`'s top-level `name` breaks every existing
   `/plugin install ...@<old-name>` for users who already added it — there's no equivalent of
   the per-plugin `renames` map for the marketplace name itself.
+- **A `directory`-source marketplace hardcodes an absolute path — renaming or moving the
+  checkout breaks it**, with a `Marketplace file not found at <old path>` warning on every
+  startup. The declaration lives in `~/.claude/settings.json` under
+  `extraKnownMarketplaces.<name>.source.path`; `~/.claude/plugins/known_marketplaces.json` is
+  only a cache derived from it, so patching the cache alone is silently overwritten. There is
+  no "repoint" command — run `claude plugin marketplace remove <name>`, then
+  `claude plugin marketplace add <absolute-path> --scope user`. Note that `remove` also
+  uninstalls that marketplace's plugins and drops them from `enabledPlugins`, so reinstall each
+  one afterwards. The `github`-source form used in `example-project/.claude/settings.json` is
+  immune. The upside of a directory source: plugins load live from the working tree (hooks
+  included, not from `~/.claude/plugins/cache/`), so edits apply on the next session with no
+  reinstall.
+- **Don't verify hooks from a sandboxed shell.** A nested `claude -p` run inside Claude Code's
+  Bash sandbox cannot write under `~/.claude/`, so every plugin hook dies with
+  `EPERM: operation not permitted, mkdir '.../plugins/data/<plugin>-<marketplace>'` and the
+  session looks exactly as if the plugin never loaded. The plugin is fine; the test harness
+  isn't. Check `~/.claude/debug/latest` for those EPERM lines before concluding a hook is
+  broken, and re-run the check outside the sandbox.
 - **`claude plugin validate` only understands plugin/marketplace manifest directories** — it
   is not a general JSON/settings validator. Don't point it at an arbitrary `settings.json`.
 - **A skill's `model:` frontmatter field only pins the model for the turn that invokes the
