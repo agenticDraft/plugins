@@ -6,3 +6,6 @@
 
 # OS noise
 .DS_Store
+
+# Project-specific files
+docs/
