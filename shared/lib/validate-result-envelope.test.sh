@@ -66,6 +66,10 @@ echo "[reject] text after the block"
 OUT=$(bash "$VALIDATOR" "$FIXDIR/invalid/trailing-text.md" 2>&1); ST=$?
 assert_exit "trailing text rejected (exit 1)" 1 $ST "$OUT"
 
+echo "[reject] a subagent-outcome status used as this contract's verdict"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/invalid/inner-literal.md" 2>&1); ST=$?
+assert_exit "inner literal rejected (exit 1)" 1 $ST "$OUT"
+
 echo "[usage] no argument"
 OUT=$(bash "$VALIDATOR" 2>&1); ST=$?
 assert_exit "no arg -> usage error (exit 2)" 2 $ST "$OUT"
