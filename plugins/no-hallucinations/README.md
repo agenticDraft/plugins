@@ -22,7 +22,7 @@ into something installable that travels between machines and teammates.
 - **If something isn't going to work, say so before we waste time.**
 - **If the question is unclear, ask before answering.**
 
-The full text lives in one place: [`skills/be-honest/SKILL.md`](plugins/no-hallucinations/skills/be-honest/SKILL.md).
+The full text lives in one place: [`skills/be-honest/SKILL.md`](skills/be-honest/SKILL.md).
 
 ## Install
 
@@ -32,7 +32,7 @@ The full text lives in one place: [`skills/be-honest/SKILL.md`](plugins/no-hallu
 ```
 
 Restart the session. To scope it to a single repo instead of your whole machine, commit a
-`.claude/settings.json` — see [`example-project/`](example-project/).
+`.claude/settings.json` — see [`example-project/`](../../example-project/).
 
 ## Why a hook and not just a skill
 
@@ -102,4 +102,4 @@ Use `claude --debug` to confirm the hook fired and see its output.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](../../LICENSE).
