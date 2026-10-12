@@ -1,0 +1,41 @@
+name: Validate provider packs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/agentic-jira/**'
+      - 'plugins/agentic-github/**'
+      - 'plugins/agentic-figma/**'
+      - 'plugins/agentic-core/**'
+      - '.github/workflows/validate-provider-packs.yaml'
+  pull_request:
+    paths:
+      - 'plugins/agentic-jira/**'
+      - 'plugins/agentic-github/**'
+      - 'plugins/agentic-figma/**'
+      - 'plugins/agentic-core/**'
+      - '.github/workflows/validate-provider-packs.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install the runner's dependencies
+        run: npm ci
+        working-directory: plugins/agentic-core/shared/runner
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: every jira, github and figma suite
+        run: bash scripts/run-tests.sh plugins/agentic-jira plugins/agentic-github plugins/agentic-figma
+      - name: Validate each provider pack manifest and plugin manifest
+        run: |
+          for p in jira github figma; do
+            bash plugins/agentic-core/shared/lib/validate-pack-manifest.sh plugins/agentic-$p/pack.yaml
+            claude plugin validate plugins/agentic-$p --strict
+          done

@@ -137,6 +137,15 @@ $ bash plugins/agentic-jira/scripts/md-to-adf.test.sh
 === 20 passed, 0 failed ===
 ```
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-jira@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Set the three environment variables in the environment that will start the session:

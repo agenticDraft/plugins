@@ -108,6 +108,15 @@ passed: 42, failed: 0
 
 Five files, 221 assertions, no network.
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-figma@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Install the `figma` marketplace plugin and authenticate it: `/plugin`, select `figma`, choose
