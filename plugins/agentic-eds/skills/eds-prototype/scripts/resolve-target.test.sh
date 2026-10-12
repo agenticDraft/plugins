@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for resolve-target.py. Run with:
-#   bash plugins/eds/skills/eds-prototype/scripts/resolve-target.test.sh
+#   bash plugins/agentic-eds/skills/eds-prototype/scripts/resolve-target.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case writes
 # a fact record, and answers through the core's own write-question-answer.sh

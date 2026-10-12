@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for refresh-block-collection.sh. Run with:
-#   bash plugins/eds/shared/scripts/refresh-block-collection.test.sh
+#   bash plugins/agentic-eds/shared/scripts/refresh-block-collection.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. The upstream is
 # a local git repository built here, so the suite needs no network; the real

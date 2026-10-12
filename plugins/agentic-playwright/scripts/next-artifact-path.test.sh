@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for next-artifact-path.cjs. Run with:
-#   bash plugins/playwright/scripts/next-artifact-path.test.sh
+#   bash plugins/agentic-playwright/scripts/next-artifact-path.test.sh
 #
 # No framework, and no browser — exits 0 on success, 1 if anything failed.
 

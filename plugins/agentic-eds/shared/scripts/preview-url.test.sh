@@ -83,7 +83,7 @@ for f in blocks/a/a.js styles/styles.css scripts/scripts.js fonts/x.woff2 icons/
 done
 
 echo "[automation-only] no served path → no URL"
-D=$(repo_with plugins/eds/skills/eds-deliver/SKILL.md .github/workflows/x.yaml docs/x.md)
+D=$(repo_with plugins/agentic-eds/skills/eds-deliver/SKILL.md .github/workflows/x.yaml docs/x.md)
 run "$D" --branch psi-preview-url --base main
 assert_eq "exit 0" "0" "$CODE"
 assert_has "pr-type automation-only" "pr-type: automation-only" "$ERR"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/check-breakpoint-regressions.py check \
+# Run: python3 plugins/agentic-eds/shared/scripts/check-breakpoint-regressions.py check \
 #        <measure.json> [<measure.json>...]
 #
 # check-breakpoint-regressions.py selectors <block.css>

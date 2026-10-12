@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Name an asset's image format from its bytes alone.
 
-Run: python3 plugins/figma/skills/fetch-reference/scripts/sniff-asset.py <file>
+Run: python3 plugins/agentic-figma/skills/fetch-reference/scripts/sniff-asset.py <file>
 
 Prints `<extension><TAB><mime>` for the file's format, decided from its
 leading bytes and never from its name or any URL:

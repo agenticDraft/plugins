@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for design-context-values.py. Run with:
-#   bash plugins/eds/skills/eds-prototype/scripts/design-context-values.test.sh
+#   bash plugins/agentic-eds/skills/eds-prototype/scripts/design-context-values.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a design-reference.json and its reference code in a temporary directory and

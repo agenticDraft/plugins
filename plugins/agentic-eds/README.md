@@ -142,7 +142,7 @@ modified copy. Keep it when changing the file:
 1. From the repository root, on a branch cut from an up-to-date `main`:
 
    ```sh
-   bash plugins/eds/shared/scripts/refresh-block-collection.sh <commit>
+   bash plugins/agentic-eds/shared/scripts/refresh-block-collection.sh <commit>
    ```
 
    A short commit id is recorded in full. Optional arguments: `[repo] [dest]`.
@@ -159,9 +159,9 @@ modified copy. Keep it when changing the file:
 ### Tests
 
 ```sh
-bash plugins/eds/skills/eds-conventions-component-reuse/scripts/check-component-reuse.test.sh
-bash plugins/eds/shared/scripts/copy-upstream-blocks.test.sh
-bash plugins/eds/shared/scripts/refresh-block-collection.test.sh
+bash plugins/agentic-eds/skills/eds-conventions-component-reuse/scripts/check-component-reuse.test.sh
+bash plugins/agentic-eds/shared/scripts/copy-upstream-blocks.test.sh
+bash plugins/agentic-eds/shared/scripts/refresh-block-collection.test.sh
 ```
 
 All three run offline; the refresh test uses a local git repository as its upstream.
@@ -177,8 +177,8 @@ follows the repository, so that name answers `new`.
 **Manifest validation, this run:**
 
 ```text
-$ claude plugin validate plugins/eds
-Validating plugin manifest: .../plugins/eds/.claude-plugin/plugin.json
+$ claude plugin validate plugins/agentic-eds
+Validating plugin manifest: .../plugins/agentic-eds/.claude-plugin/plugin.json
 
 ✔ Validation passed
 ```
@@ -186,7 +186,7 @@ Validating plugin manifest: .../plugins/eds/.claude-plugin/plugin.json
 **Pack manifest check by the core, this run:**
 
 ```text
-$ bash plugins/eds/core/lib/validate-pack-manifest.sh plugins/eds/pack.yaml
+$ bash plugins/agentic-eds/core/lib/validate-pack-manifest.sh plugins/agentic-eds/pack.yaml
 valid: platform
 ```
 
@@ -220,9 +220,9 @@ paths:
    `plugins/`:
 
    ```text
-   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/eds \
-          --plugin-dir ./plugins/jira --plugin-dir ./plugins/github \
-          --plugin-dir ./plugins/figma --plugin-dir ./plugins/playwright
+   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/agentic-eds \
+          --plugin-dir ./plugins/agentic-jira --plugin-dir ./plugins/agentic-github \
+          --plugin-dir ./plugins/agentic-figma --plugin-dir ./plugins/agentic-playwright
    ```
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
@@ -237,22 +237,22 @@ paths:
 5. Validate after any edit, and reload without restarting:
 
    ```text
-   claude plugin validate plugins/eds
+   claude plugin validate plugins/agentic-eds
    /reload-plugins
    ```
 
 6. Run the offline tests; each file exits 0 on success:
 
    ```text
-   for t in plugins/eds/shared/scripts/*.test.sh plugins/eds/skills/*/scripts/*.test.sh; do
+   for t in plugins/agentic-eds/shared/scripts/*.test.sh plugins/agentic-eds/skills/*/scripts/*.test.sh; do
      bash "$t" || echo "FAILED: $t"
    done
    ```
 
-7. Before shipping a change under `plugins/eds`, run the core's no-narrative check:
+7. Before shipping a change under `plugins/agentic-eds`, run the core's no-narrative check:
 
    ```text
-   bash plugins/eds/core/lib/check-no-narrative.sh plugins/eds
+   bash plugins/agentic-eds/core/lib/check-no-narrative.sh plugins/agentic-eds
    ```
 
 ## Limits you should know

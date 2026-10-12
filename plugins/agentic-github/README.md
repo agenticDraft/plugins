@@ -82,8 +82,8 @@ of a change without a model step can run it directly.
 **Manifest validation, this run:**
 
 ```text
-$ claude plugin validate plugins/github
-Validating plugin manifest: .../plugins/github/.claude-plugin/plugin.json
+$ claude plugin validate plugins/agentic-github
+Validating plugin manifest: .../plugins/agentic-github/.claude-plugin/plugin.json
 
 ✔ Validation passed
 ```
@@ -91,14 +91,14 @@ Validating plugin manifest: .../plugins/github/.claude-plugin/plugin.json
 **Pack manifest check by the core, this run:**
 
 ```text
-$ bash plugins/github/core/lib/validate-pack-manifest.sh plugins/github/pack.yaml
+$ bash plugins/agentic-github/core/lib/validate-pack-manifest.sh plugins/agentic-github/pack.yaml
 valid: provider
 ```
 
 **A usage error, this run:**
 
 ```text
-$ bash plugins/github/skills/check-status/scripts/check-status.sh
+$ bash plugins/agentic-github/skills/check-status/scripts/check-status.sh
 usage: check-status.sh <branch-name>
 ```
 
@@ -107,10 +107,10 @@ Exit status 2. Every operational outcome, by contrast, exits 0 with an envelope.
 **The offline test suites, this run:**
 
 ```text
-$ bash plugins/github/skills/check-status/scripts/check-status.test.sh
+$ bash plugins/agentic-github/skills/check-status/scripts/check-status.test.sh
 ...
 === 43 passed, 0 failed ===
-$ bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
+$ bash plugins/agentic-github/skills/create-branch/scripts/create-branch.test.sh
 ...
 === 13 passed, 0 failed ===
 ```
@@ -122,14 +122,14 @@ $ bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
 2. Load the pack next to the core, from the directory that holds `plugins/`:
 
    ```text
-   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/github
+   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/agentic-github
    ```
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
 3. Validate after any edit, and reload without restarting:
 
    ```text
-   claude plugin validate plugins/github
+   claude plugin validate plugins/agentic-github
    /reload-plugins
    ```
 4. Invoke an operation. A stage adapter does it as `Skill(agentic-github:check-status)` with the input
@@ -137,8 +137,8 @@ $ bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
 5. Run the offline tests:
 
    ```text
-   bash plugins/github/skills/check-status/scripts/check-status.test.sh
-   bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
+   bash plugins/agentic-github/skills/check-status/scripts/check-status.test.sh
+   bash plugins/agentic-github/skills/create-branch/scripts/create-branch.test.sh
    ```
 
 To make this pack the project's scm, set `packs.scm: github` in `.ai/project-config.yaml`.

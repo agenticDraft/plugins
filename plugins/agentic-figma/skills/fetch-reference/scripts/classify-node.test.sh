@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for classify-node.py. Run with:
-#   bash plugins/figma/skills/fetch-reference/scripts/classify-node.test.sh
+#   bash plugins/agentic-figma/skills/fetch-reference/scripts/classify-node.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. The fixtures
 # under fixtures/ are real metadata responses, trimmed to the depth the

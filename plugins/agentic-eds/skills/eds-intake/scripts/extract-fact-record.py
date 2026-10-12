@@ -116,7 +116,7 @@ RESERVED_IMAGE_NAMES = ("design-reference.png", "design-reference.jpg", "design-
 
 
 def any_design_url(text):
-    """A design-tool URL, recognised the same way plugins/figma's own
+    """A design-tool URL, recognised the same way plugins/agentic-figma's own
     fetch-reference skill recognises one (host is figma.com or
     www.figma.com) — the only design provider pack this project ships.
     See phase-4-task-2-done.md for why this is not yet pack-configurable."""

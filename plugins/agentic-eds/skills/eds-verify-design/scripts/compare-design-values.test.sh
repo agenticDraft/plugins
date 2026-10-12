@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for compare-design-values.py. Run with:
-#   bash plugins/eds/skills/eds-verify-design/scripts/compare-design-values.test.sh
+#   bash plugins/agentic-eds/skills/eds-verify-design/scripts/compare-design-values.test.sh
 #
 # No framework, and no browser — exits 0 when every case passes, 1 otherwise.
 # Each case writes a value table, a prototype report and a measurement file in

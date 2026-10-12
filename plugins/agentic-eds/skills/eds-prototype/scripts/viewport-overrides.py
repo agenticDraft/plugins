@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/skills/eds-prototype/scripts/viewport-overrides.py .ai/run-context/design-reference.json <breakpoints>
+# Run: python3 plugins/agentic-eds/skills/eds-prototype/scripts/viewport-overrides.py .ai/run-context/design-reference.json <breakpoints>
 #
 # viewport-overrides.py <design-reference.json> <breakpoints>
 #

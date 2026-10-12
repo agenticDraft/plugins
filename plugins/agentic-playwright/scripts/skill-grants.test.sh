@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests that every operation skill in this pack runs its browser script with
 # the command sandbox off. Run with:
-#   bash plugins/playwright/scripts/skill-grants.test.sh
+#   bash plugins/agentic-playwright/scripts/skill-grants.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise.
 #

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for check-breakpoint-regressions.py. Run with:
-#   bash plugins/eds/shared/scripts/check-breakpoint-regressions.test.sh
+#   bash plugins/agentic-eds/shared/scripts/check-breakpoint-regressions.test.sh
 #
 # No framework, no browser — exits 0 when every case passes, 1 otherwise.
 # Measurements and stylesheets are written per case into a temporary directory.

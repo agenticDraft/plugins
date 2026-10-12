@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/jira/scripts/md-to-adf.py <markdown-file> --out <json-file>
+# Run: python3 plugins/agentic-jira/scripts/md-to-adf.py <markdown-file> --out <json-file>
 """md-to-adf.py <markdown-file|-> [--out <json-file>]
 
 Convert a work item's description from the markdown an author writes into the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/delivery-text.py block --branch eds-18
+# Run: python3 plugins/agentic-eds/shared/scripts/delivery-text.py block --branch eds-18
 #
 # delivery-text.py <block|note|report|checks> [options]
 #

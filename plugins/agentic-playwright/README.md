@@ -95,8 +95,8 @@ a model step.
 **Manifest validation, this run:**
 
 ```text
-$ claude plugin validate plugins/playwright
-Validating plugin manifest: .../plugins/playwright/.claude-plugin/plugin.json
+$ claude plugin validate plugins/agentic-playwright
+Validating plugin manifest: .../plugins/agentic-playwright/.claude-plugin/plugin.json
 
 ✔ Validation passed
 ```
@@ -104,9 +104,9 @@ Validating plugin manifest: .../plugins/playwright/.claude-plugin/plugin.json
 **The core reading this pack's preconditions, this run, on a machine with both tools present:**
 
 ```text
-$ bash plugins/playwright/core/lib/validate-pack-manifest.sh plugins/playwright/pack.yaml
+$ bash plugins/agentic-playwright/core/lib/validate-pack-manifest.sh plugins/agentic-playwright/pack.yaml
 valid: provider
-$ bash plugins/playwright/core/lib/check-requires.sh plugins/playwright/pack.yaml
+$ bash plugins/agentic-playwright/core/lib/check-requires.sh plugins/agentic-playwright/pack.yaml
 ok: playwright
 ok: chromium
 ```
@@ -115,7 +115,7 @@ ok: chromium
 blocks the browser process; the operation still returned an envelope and exit status 0:
 
 ```text
-$ node plugins/playwright/skills/render/scripts/render.cjs http://127.0.0.1:1/
+$ node plugins/agentic-playwright/skills/render/scripts/render.cjs http://127.0.0.1:1/
 ## Result
 verdict: fail
 summary: could not launch Chromium: browserType.launch: Target page, context or browser has been closed
@@ -126,7 +126,7 @@ next_action: none
 **A usage error, this run:**
 
 ```text
-$ node plugins/playwright/skills/measure/scripts/measure.cjs
+$ node plugins/agentic-playwright/skills/measure/scripts/measure.cjs
 usage: measure.cjs [--width <n>] <target-url> <selector> [selector...]
 ```
 
@@ -135,13 +135,13 @@ Exit status 2.
 **The offline test suites, this run:**
 
 ```text
-$ bash plugins/playwright/scripts/declared-dependency.test.sh
+$ bash plugins/agentic-playwright/scripts/declared-dependency.test.sh
 passed: 11, failed: 0
-$ bash plugins/playwright/scripts/next-artifact-path.test.sh
+$ bash plugins/agentic-playwright/scripts/next-artifact-path.test.sh
 passed: 13, failed: 0
-$ bash plugins/playwright/scripts/settle.test.sh
+$ bash plugins/agentic-playwright/scripts/settle.test.sh
 passed: 30, failed: 0
-$ bash plugins/playwright/skills/measure/scripts/measure.test.sh
+$ bash plugins/agentic-playwright/skills/measure/scripts/measure.test.sh
 passed: 15, failed: 0
 ```
 
@@ -149,26 +149,26 @@ passed: 15, failed: 0
 
 1. Make the two declared tools present, using the manifest's own remedies:
    installed from a marketplace, the host installs the `playwright` version `package.json` pins into
-   the plugin's own directory; loaded by path, run `npm ci` in `plugins/playwright/`. Then
+   the plugin's own directory; loaded by path, run `npm ci` in `plugins/agentic-playwright/`. Then
    `npx playwright@1.63.0 install chromium`.
 2. Load the pack next to the core, from the directory that holds `plugins/`:
 
    ```text
-   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/playwright
+   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/agentic-playwright
    ```
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
 3. Check the preconditions the way the core does:
 
    ```text
-   bash plugins/playwright/core/lib/check-requires.sh plugins/playwright/pack.yaml
+   bash plugins/agentic-playwright/core/lib/check-requires.sh plugins/agentic-playwright/pack.yaml
    ```
 
    or, in a session with the core loaded and the project configured, `/agentic-core:health`.
 4. Validate after any edit, and reload without restarting:
 
    ```text
-   claude plugin validate plugins/playwright
+   claude plugin validate plugins/agentic-playwright
    /reload-plugins
    ```
 5. Invoke an operation. A stage adapter does it as `Skill(agentic-playwright:render)` with the input

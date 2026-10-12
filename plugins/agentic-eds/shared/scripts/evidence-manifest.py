@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/evidence-manifest.py gaps \
+# Run: python3 plugins/agentic-eds/shared/scripts/evidence-manifest.py gaps \
 #        --check .ai/run-context/verify-design-check-2.txt \
 #        --variables .ai/run-context/verify-design-variables-2.txt \
 #        --compare .ai/run-context/verify-design-compare-2.txt

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/design-fonts.py .ai/run-context/design-reference.json .
+# Run: python3 plugins/agentic-eds/shared/scripts/design-fonts.py .ai/run-context/design-reference.json .
 #
 # design-fonts.py <design-reference.json> [project-root]
 #

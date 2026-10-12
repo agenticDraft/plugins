@@ -101,8 +101,8 @@ keyed on the item or project, so a later call for the same key overwrites it.
 **Manifest validation, this run:**
 
 ```text
-$ claude plugin validate plugins/jira
-Validating plugin manifest: .../plugins/jira/.claude-plugin/plugin.json
+$ claude plugin validate plugins/agentic-jira
+Validating plugin manifest: .../plugins/agentic-jira/.claude-plugin/plugin.json
 
 ✔ Validation passed
 ```
@@ -110,16 +110,16 @@ Validating plugin manifest: .../plugins/jira/.claude-plugin/plugin.json
 **Pack manifest check by the core, this run:**
 
 ```text
-$ bash plugins/jira/core/lib/validate-pack-manifest.sh plugins/jira/pack.yaml
+$ bash plugins/agentic-jira/core/lib/validate-pack-manifest.sh plugins/agentic-jira/pack.yaml
 valid: provider
-$ bash plugins/jira/core/lib/check-requires.sh plugins/jira/pack.yaml
+$ bash plugins/agentic-jira/core/lib/check-requires.sh plugins/agentic-jira/pack.yaml
 ok: no requirements declared
 ```
 
 **The operation without credentials, this run:**
 
 ```text
-$ env -u JIRA_SITE -u JIRA_EMAIL -u JIRA_API_TOKEN bash plugins/jira/skills/fetch-item/scripts/fetch-item.sh ABC-1
+$ env -u JIRA_SITE -u JIRA_EMAIL -u JIRA_API_TOKEN bash plugins/agentic-jira/skills/fetch-item/scripts/fetch-item.sh ABC-1
 ## Result
 verdict: fail
 summary: JIRA_SITE, JIRA_EMAIL or JIRA_API_TOKEN is not set in the environment.
@@ -132,7 +132,7 @@ Exit status 0: the envelope is the result, and the caller branches on `verdict`.
 **The offline test suite, this run:**
 
 ```text
-$ bash plugins/jira/scripts/md-to-adf.test.sh
+$ bash plugins/agentic-jira/scripts/md-to-adf.test.sh
 ...
 === 20 passed, 0 failed ===
 ```
@@ -144,7 +144,7 @@ $ bash plugins/jira/scripts/md-to-adf.test.sh
 2. Load the pack next to the core, from the directory that holds `plugins/`:
 
    ```text
-   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/jira
+   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/agentic-jira
    ```
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`, so an
@@ -152,7 +152,7 @@ $ bash plugins/jira/scripts/md-to-adf.test.sh
 3. Validate after any edit, and reload without restarting:
 
    ```text
-   claude plugin validate plugins/jira
+   claude plugin validate plugins/agentic-jira
    /reload-plugins
    ```
 4. Invoke an operation. A stage adapter does it as `Skill(agentic-jira:fetch-item)` with the input lines
@@ -160,7 +160,7 @@ $ bash plugins/jira/scripts/md-to-adf.test.sh
 5. Run the offline tests:
 
    ```text
-   bash plugins/jira/scripts/md-to-adf.test.sh
+   bash plugins/agentic-jira/scripts/md-to-adf.test.sh
    ```
 
 To make this pack the project's tracker, set `packs.tracker: jira` in `.ai/project-config.yaml`

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run: bash plugins/eds/shared/scripts/check-gate-reporting.sh plugins/eds/skills
+# Run: bash plugins/agentic-eds/shared/scripts/check-gate-reporting.sh plugins/agentic-eds/skills
 #
 # check-gate-reporting.sh <skills dir>
 #

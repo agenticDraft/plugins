@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for check-component-reuse.sh. Run with:
-#   bash plugins/eds/skills/eds-conventions-component-reuse/scripts/check-component-reuse.test.sh
+#   bash plugins/agentic-eds/skills/eds-conventions-component-reuse/scripts/check-component-reuse.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a project root, a fact record and (where the case needs one) an upstream

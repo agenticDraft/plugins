@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for design-names.py. Run with:
-#   bash plugins/eds/shared/scripts/design-names.test.sh
+#   bash plugins/agentic-eds/shared/scripts/design-names.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case calls
 # the module's functions directly through python3 and compares what it prints.

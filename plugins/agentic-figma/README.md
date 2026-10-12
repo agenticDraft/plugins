@@ -78,8 +78,8 @@ A design context the tool returns as structure only, or cut short by its size ca
 **Manifest validation, this run:**
 
 ```text
-$ claude plugin validate plugins/figma
-Validating plugin manifest: .../plugins/figma/.claude-plugin/plugin.json
+$ claude plugin validate plugins/agentic-figma
+Validating plugin manifest: .../plugins/agentic-figma/.claude-plugin/plugin.json
 
 ✔ Validation passed
 ```
@@ -87,22 +87,22 @@ Validating plugin manifest: .../plugins/figma/.claude-plugin/plugin.json
 **Pack manifest check by the core, this run:**
 
 ```text
-$ bash plugins/figma/core/lib/validate-pack-manifest.sh plugins/figma/pack.yaml
+$ bash plugins/agentic-figma/core/lib/validate-pack-manifest.sh plugins/agentic-figma/pack.yaml
 valid: provider
 ```
 
 **The offline test suites, this run:**
 
 ```text
-$ bash plugins/figma/skills/fetch-reference/scripts/classify-node.test.sh
+$ bash plugins/agentic-figma/skills/fetch-reference/scripts/classify-node.test.sh
 passed: 75, failed: 0
-$ bash plugins/figma/skills/fetch-reference/scripts/fetch-assets.test.sh
+$ bash plugins/agentic-figma/skills/fetch-reference/scripts/fetch-assets.test.sh
 passed: 50, failed: 0
-$ bash plugins/figma/skills/fetch-reference/scripts/screenshot-size.test.sh
+$ bash plugins/agentic-figma/skills/fetch-reference/scripts/screenshot-size.test.sh
 passed: 29, failed: 0
-$ bash plugins/figma/skills/fetch-reference/scripts/sniff-asset.test.sh
+$ bash plugins/agentic-figma/skills/fetch-reference/scripts/sniff-asset.test.sh
 passed: 25, failed: 0
-$ bash plugins/figma/skills/fetch-reference/scripts/viewports.test.sh
+$ bash plugins/agentic-figma/skills/fetch-reference/scripts/viewports.test.sh
 passed: 42, failed: 0
 ```
 
@@ -116,14 +116,14 @@ Five files, 221 assertions, no network.
 2. Load the pack next to the core, from the directory that holds `plugins/`:
 
    ```text
-   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/figma
+   claude --plugin-dir ./plugins/agentic-core --plugin-dir ./plugins/agentic-figma
    ```
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
 3. Validate after any edit, and reload without restarting:
 
    ```text
-   claude plugin validate plugins/figma
+   claude plugin validate plugins/agentic-figma
    /reload-plugins
    ```
 4. Invoke the operation. A stage adapter does it as `Skill(agentic-figma:fetch-reference)` with one

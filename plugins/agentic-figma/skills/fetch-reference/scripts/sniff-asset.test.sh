@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for sniff-asset.py. Run with:
-#   bash plugins/figma/skills/fetch-reference/scripts/sniff-asset.test.sh
+#   bash plugins/agentic-figma/skills/fetch-reference/scripts/sniff-asset.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise.
 

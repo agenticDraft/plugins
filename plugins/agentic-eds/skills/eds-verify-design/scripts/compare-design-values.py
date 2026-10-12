@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/skills/eds-verify-design/scripts/compare-design-values.py compare \
+# Run: python3 plugins/agentic-eds/skills/eds-verify-design/scripts/compare-design-values.py compare \
 #        .ai/run-context/design-context-values.tsv .ai/run-context/prototype-report.md <measure.json>
 #
 # compare-design-values.py selectors <prototype-report.md>
