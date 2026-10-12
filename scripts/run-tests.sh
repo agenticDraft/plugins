@@ -9,6 +9,9 @@
 set -uo pipefail
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+
+# Suites refuse to create test directories when TMPDIR is empty; a CI image leaves it unset.
+export TMPDIR="${TMPDIR:-${RUNNER_TEMP:-/tmp}}"
 [ "$#" -gt 0 ] || set -- plugins scripts
 
 files=0
