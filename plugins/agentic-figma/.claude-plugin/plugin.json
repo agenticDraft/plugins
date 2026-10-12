@@ -1,8 +1,8 @@
 {
-  "name": "figma",
+  "name": "agentic-figma",
   "displayName": "Figma Design Provider",
   "description": "Provider pack for the design role: fetch_reference against a real Figma file, wrapping the Figma MCP server's design-context tools.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "agenticDraft"
   },

@@ -47,11 +47,11 @@ GitHub remote.
 
 ```text
 stage adapter (a platform pack skill)
-  │  Skill(github:create-branch)   branch: <name> [base: <name>]
+  │  Skill(agentic-github:create-branch)   branch: <name> [base: <name>]
   ↓  ... implement, verify, lint ...
-  │  Skill(github:publish-change)  branch, title, body [, base]
+  │  Skill(agentic-github:publish-change)  branch, title, body [, base]
   ↓
-  │  Skill(github:check-status)    branch: <name>
+  │  Skill(agentic-github:check-status)    branch: <name>
   ↓
 check-status.sh
   ├── no pull request      → pass, change_state: none, no checks
@@ -132,8 +132,8 @@ $ bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
    claude plugin validate plugins/github
    /reload-plugins
    ```
-4. Invoke an operation. A stage adapter does it as `Skill(github:check-status)` with the input
-   lines as the argument; from a prompt, `/github:check-status` followed by `branch: <name>`.
+4. Invoke an operation. A stage adapter does it as `Skill(agentic-github:check-status)` with the input
+   lines as the argument; from a prompt, `/agentic-github:check-status` followed by `branch: <name>`.
 5. Run the offline tests:
 
    ```text

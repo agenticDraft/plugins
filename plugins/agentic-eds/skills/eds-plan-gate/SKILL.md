@@ -1,7 +1,7 @@
 ---
 description: The plan-gate stage (core contract §4) — always runs, between plan and implement. Runs the core's deterministic plan check first, then reviews only what survives it against the two criteria a script cannot answer, and reports only findings it can defend. Writes only its findings report and its envelope; normalises the checker's own output into this platform's own finding, never returns it unchanged.
 context: fork
-agent: eds:eds-gate-reviewer
+agent: agentic-eds:eds-gate-reviewer
 ---
 
 # eds-plan-gate

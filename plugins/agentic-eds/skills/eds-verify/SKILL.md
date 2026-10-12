@@ -219,7 +219,7 @@ than reporting nothing to check against at all.
 
 ### Generate a fixture
 
-Invoke `Skill(eds:eds-fixture)` with:
+Invoke `Skill(agentic-eds:eds-fixture)` with:
 
 ```
 block: <the first target block name from Target block identified?>

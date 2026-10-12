@@ -832,6 +832,6 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
   whose real cause is a wrong rule could be tagged `[content-asset gap]` while a family is missing.
   Only the tagging is judgment: whether any `[fixable]` mismatch is left is counted by
   `count-fixable.sh` (D536), and an untagged line counts as fixable.
-- **`Skill(eds:eds-verify-design)` resolving inside a real route, under `context: fork`.** Same class
+- **`Skill(agentic-eds:eds-verify-design)` resolving inside a real route, under `context: fork`.** Same class
   as every prior stage-adapter task — the `eds` plugin is not loaded into this session, so the flow
   was executed by hand, node by node, against the real scripts and real project state.
