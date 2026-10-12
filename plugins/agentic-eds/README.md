@@ -228,8 +228,8 @@ paths:
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
 2. Configure the project with `/agentic-core:setup`, or write `.ai/project-config.yaml` as shown
    above with `packs.platform: eds`.
-3. Onboard the design system once, if the project has one: `/eds:eds-adopt-design-system`, then
-   `/eds:eds-audit-design-system`, then `/eds:eds-complete-design-onboarding`. `pack.yaml`
+3. Onboard the design system once, if the project has one: `/agentic-eds:eds-adopt-design-system`, then
+   `/agentic-eds:eds-audit-design-system`, then `/agentic-eds:eds-complete-design-onboarding`. `pack.yaml`
    declares `onboarding_state_path: styles/design-system.md` and
    `audit_findings_path: .ai/design/audit.md`; the core's pre-flight warns when the
    onboarding-state file is absent and blocks on an open poisoning finding at the audit path.

@@ -113,7 +113,7 @@ The file exists — continue to **Run the audit fresh**. It does not — go to *
 
 ### Run the audit fresh
 
-Invoke `Skill(eds:eds-audit-design-system)` with no arguments. Never reuse a `.ai/design/audit.md`
+Invoke `Skill(agentic-eds:eds-audit-design-system)` with no arguments. Never reuse a `.ai/design/audit.md`
 already on disk from an earlier run — a finding's classification depends on live git history
 (`check-auto-fix-eligibility.sh`) and the project's current file state, both of which can have
 changed since the last audit ran, and a stale classification is exactly what would let a

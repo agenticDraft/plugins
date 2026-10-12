@@ -171,8 +171,8 @@ passed: 15, failed: 0
    claude plugin validate plugins/playwright
    /reload-plugins
    ```
-5. Invoke an operation. A stage adapter does it as `Skill(playwright:render)` with the input
-   lines as the argument; from a prompt, `/playwright:render` followed by `target: <URL>`.
+5. Invoke an operation. A stage adapter does it as `Skill(agentic-playwright:render)` with the input
+   lines as the argument; from a prompt, `/agentic-playwright:render` followed by `target: <URL>`.
    Every operation writes its artifact under `.ai/playwright/` at the project root: a PNG for
    `capture`, a JSON file for the other three, each named `<operation>-<target slug>[-<width>]-<n>`.
 6. Run the offline tests, listed above.

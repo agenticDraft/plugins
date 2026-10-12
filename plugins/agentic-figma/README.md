@@ -47,7 +47,7 @@ or turned into a question.
 ## The flow
 
 ```text
-Skill(figma:fetch-reference)   reference: https://www.figma.com/design/<file_key>/...?node-id=<id>
+Skill(agentic-figma:fetch-reference)   reference: https://www.figma.com/design/<file_key>/...?node-id=<id>
   ↓
 parse URL ── no node-id → question
   ↓
@@ -126,8 +126,8 @@ Five files, 221 assertions, no network.
    claude plugin validate plugins/figma
    /reload-plugins
    ```
-4. Invoke the operation. A stage adapter does it as `Skill(figma:fetch-reference)` with one
-   input line, `reference: <design URL with node-id>`; from a prompt, `/figma:fetch-reference`
+4. Invoke the operation. A stage adapter does it as `Skill(agentic-figma:fetch-reference)` with one
+   input line, `reference: <design URL with node-id>`; from a prompt, `/agentic-figma:fetch-reference`
    followed by that line. Outputs land under `.ai/figma/` at the project root.
 5. Run the offline tests, listed above.
 

@@ -1,7 +1,7 @@
 ---
 description: The publish-gate stage (core contract §4) — always runs, between lint and deliver. Runs the core's deterministic publish check first, then reviews only what survives it against the two criteria a script cannot answer — does the change implement what the plan proposed, is it free of anything that must not reach publication — and reports only findings it can defend. Writes only its findings report and its envelope; reviews the actual change through git, never a description of it.
 context: fork
-agent: eds:eds-gate-reviewer
+agent: agentic-eds:eds-gate-reviewer
 ---
 
 # eds-publish-gate

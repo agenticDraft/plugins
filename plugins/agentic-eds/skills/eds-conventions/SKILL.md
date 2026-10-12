@@ -28,9 +28,9 @@ because with neither field set there are no design values for it to grade.
 Dispatch each by name with `Skill(<skill name>)`, the same mechanism the route driver uses to
 dispatch this stage itself, one tier further in:
 
-- `Skill(eds:eds-conventions-styles)` — only when dispatched (see **Check the styles condition**)
-- `Skill(eds:eds-conventions-markup)` — always
-- `Skill(eds:eds-conventions-component-reuse)` — always
+- `Skill(agentic-eds:eds-conventions-styles)` — only when dispatched (see **Check the styles condition**)
+- `Skill(agentic-eds:eds-conventions-markup)` — always
+- `Skill(agentic-eds:eds-conventions-component-reuse)` — always
 
 Issue the calls this stage is dispatching together, in the same turn, rather than one at a time —
 nothing about any of the three depends on another's result. Wait for every dispatched call to

@@ -42,7 +42,7 @@ and its operations; this pack is the one place that knows those operations mean 
 
 ```text
 stage adapter (a platform pack skill)
-  │  Skill(jira:fetch-item)  with  item_id: ABC-123
+  │  Skill(agentic-jira:fetch-item)  with  item_id: ABC-123
   ↓
 skills/fetch-item/SKILL.md
   │  runs scripts/fetch-item.sh ABC-123
@@ -155,8 +155,8 @@ $ bash plugins/jira/scripts/md-to-adf.test.sh
    claude plugin validate plugins/jira
    /reload-plugins
    ```
-4. Invoke an operation. A stage adapter does it as `Skill(jira:fetch-item)` with the input lines
-   as the argument; from a prompt, `/jira:fetch-item` followed by `item_id: <key>`.
+4. Invoke an operation. A stage adapter does it as `Skill(agentic-jira:fetch-item)` with the input lines
+   as the argument; from a prompt, `/agentic-jira:fetch-item` followed by `item_id: <key>`.
 5. Run the offline tests:
 
    ```text

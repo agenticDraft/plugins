@@ -191,7 +191,7 @@ skill exists for decorative.
 
 ### Run the audit
 
-Invoke `Skill(eds:eds-audit-design-system)` with no arguments — the manifest this flow just wrote
+Invoke `Skill(agentic-eds:eds-audit-design-system)` with no arguments — the manifest this flow just wrote
 is exactly what that skill needs to audit against (D17: the same skill is invocable standalone or
 as a step here). Read the `## Result` block it ends with; its `artifacts` field names
 `.ai/design/audit.md`, added to this flow's own `artifacts` list in whichever report node is
