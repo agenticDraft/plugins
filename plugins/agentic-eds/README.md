@@ -221,7 +221,7 @@ paths:
 /plugin install agentic-eds@agenticdraft
 ```
 
-A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+A project installs it by the `settings.json` in the [getting-started guide](https://github.com/agenticDraft/plugins/blob/main/docs/getting-started.md).
 
 ## Running it yourself
 
