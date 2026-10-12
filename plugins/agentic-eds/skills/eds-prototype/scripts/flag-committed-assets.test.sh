@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for flag-committed-assets.py. Run with:
-#   bash plugins/eds/skills/eds-prototype/scripts/flag-committed-assets.test.sh
+#   bash plugins/agentic-eds/skills/eds-prototype/scripts/flag-committed-assets.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case runs
 # the script from inside a throwaway repository whose ignore rules mirror a

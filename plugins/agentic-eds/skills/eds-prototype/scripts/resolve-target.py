@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/skills/eds-prototype/scripts/resolve-target.py .ai/run-context/fact-record.yaml .ai/run-context/question-answer.yaml
+# Run: python3 plugins/agentic-eds/skills/eds-prototype/scripts/resolve-target.py .ai/run-context/fact-record.yaml .ai/run-context/question-answer.yaml
 #
 # resolve-target.py <fact-record.yaml> <question-answer.yaml>
 #

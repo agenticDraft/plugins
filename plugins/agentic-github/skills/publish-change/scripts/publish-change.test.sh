@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for publish-change.sh. Run with:
-#   bash plugins/github/skills/publish-change/scripts/publish-change.test.sh
+#   bash plugins/agentic-github/skills/publish-change/scripts/publish-change.test.sh
 #
 # No framework — exits 0 on success, 1 on any failure.
 #

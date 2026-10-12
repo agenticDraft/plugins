@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for launch-options.cjs. Run with:
-#   bash plugins/playwright/scripts/launch-options.test.sh
+#   bash plugins/agentic-playwright/scripts/launch-options.test.sh
 #
 # No browser — exits 0 on success, 1 if anything failed.
 

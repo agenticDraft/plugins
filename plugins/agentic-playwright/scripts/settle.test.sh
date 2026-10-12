@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for settle.cjs. Run with:
-#   bash plugins/playwright/scripts/settle.test.sh
+#   bash plugins/agentic-playwright/scripts/settle.test.sh
 #
 # No framework, and no browser — exits 0 on success, 1 if anything failed.
 # Every case drives settle() with a scripted probe and a fake clock, so no

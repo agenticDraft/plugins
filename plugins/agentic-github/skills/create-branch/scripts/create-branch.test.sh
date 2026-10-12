@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for create-branch.sh. Run with:
-#   bash plugins/github/skills/create-branch/scripts/create-branch.test.sh
+#   bash plugins/agentic-github/skills/create-branch/scripts/create-branch.test.sh
 #
 # No framework — exits 0 on success, 1 on first failure.
 #

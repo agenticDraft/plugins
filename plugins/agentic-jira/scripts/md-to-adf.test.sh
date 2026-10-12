@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for md-to-adf.py. Run with:
-#   bash plugins/jira/scripts/md-to-adf.test.sh
+#   bash plugins/agentic-jira/scripts/md-to-adf.test.sh
 #
 # No framework — exits 0 on success, 1 if anything failed.
 #

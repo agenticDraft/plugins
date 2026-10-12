@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for pair-viewports.py. Run with:
-#   bash plugins/eds/shared/scripts/pair-viewports.test.sh
+#   bash plugins/agentic-eds/shared/scripts/pair-viewports.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Design
 # references and stylesheets are written per case into a temporary directory.

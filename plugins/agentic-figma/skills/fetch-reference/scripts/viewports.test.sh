@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for viewports.py. Run with:
-#   bash plugins/figma/skills/fetch-reference/scripts/viewports.test.sh
+#   bash plugins/agentic-figma/skills/fetch-reference/scripts/viewports.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Classification
 # tables come from classify-node.py run on the fixtures, or are written inline

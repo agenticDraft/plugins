@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/check-size-origin.py check \
+# Run: python3 plugins/agentic-eds/shared/scripts/check-size-origin.py check \
 #        blocks/<name>/<name>.css .ai/run-context/prototype-report.md \
 #        .ai/run-context/design-context-values.tsv [<measure.json>]
 #

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for write-proposed-breakpoints.sh. Run with:
-#   bash plugins/eds/skills/eds-adopt-design-system/scripts/write-proposed-breakpoints.test.sh
+#   bash plugins/agentic-eds/skills/eds-adopt-design-system/scripts/write-proposed-breakpoints.test.sh
 #
 # No framework — exits 0 on success, 1 on first failure.
 

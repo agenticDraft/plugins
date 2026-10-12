@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for resolve-design-source.py. Run with:
-#   bash plugins/eds/skills/eds-extract/scripts/resolve-design-source.test.sh
+#   bash plugins/agentic-eds/skills/eds-extract/scripts/resolve-design-source.test.sh
 #
 # No framework — exits 0 on success, 1 on first failure. Inputs are built in a
 # temporary directory per case rather than checked in, because every one of

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Download the assets a design-context code block references, and record them.
 
-Run: python3 plugins/figma/skills/fetch-reference/scripts/fetch-assets.py fetch <context-out> <assets-dir> <assets-out> < code
-     python3 plugins/figma/skills/fetch-reference/scripts/fetch-assets.py list <assets-out>...
+Run: python3 plugins/agentic-figma/skills/fetch-reference/scripts/fetch-assets.py fetch <context-out> <assets-dir> <assets-out> < code
+     python3 plugins/agentic-figma/skills/fetch-reference/scripts/fetch-assets.py list <assets-out>...
 
 fetch reads one design-context code block on stdin. The block declares its
 assets as constants, either a whole URL or a template on a prefix constant:

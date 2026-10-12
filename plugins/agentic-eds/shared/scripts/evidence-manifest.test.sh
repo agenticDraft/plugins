@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for evidence-manifest.py. Run with:
-#   bash plugins/eds/shared/scripts/evidence-manifest.test.sh
+#   bash plugins/agentic-eds/shared/scripts/evidence-manifest.test.sh
 #
 # No framework, no browser — exits 0 when every case passes, 1 otherwise.
 # The EDS-24 run's real comparison outputs and verify-design manifest are the

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for the hang-and-silence guard every operation runs under. Run with:
-#   bash plugins/playwright/scripts/operation-guard.test.sh
+#   bash plugins/agentic-playwright/scripts/operation-guard.test.sh
 #
 # Needs a real headless Chromium and the playwright package; with either
 # missing the suite reports SKIP and exits 0. Exits 1 if anything failed.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/jira/scripts/build-item-fields.py <draft-file> --out <json-file>
+# Run: python3 plugins/agentic-jira/scripts/build-item-fields.py <draft-file> --out <json-file>
 """build-item-fields.py <draft-file> [--project <key>] [--out <json-file>]
 
 Turn an authored draft — front matter plus a markdown body — into the fields

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for viewport-overrides.py. Run with:
-#   bash plugins/eds/skills/eds-prototype/scripts/viewport-overrides.test.sh
+#   bash plugins/agentic-eds/skills/eds-prototype/scripts/viewport-overrides.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a design-reference.json and one reference-code file per variant in a

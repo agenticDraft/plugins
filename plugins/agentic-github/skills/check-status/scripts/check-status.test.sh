@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for check-status.sh. Run with:
-#   bash plugins/github/skills/check-status/scripts/check-status.test.sh
+#   bash plugins/agentic-github/skills/check-status/scripts/check-status.test.sh
 #
 # No framework — exits 0 on success, 1 if any case fails.
 #

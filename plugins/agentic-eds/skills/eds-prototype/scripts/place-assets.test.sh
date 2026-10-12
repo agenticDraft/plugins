@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for place-assets.py. Run with:
-#   bash plugins/eds/skills/eds-prototype/scripts/place-assets.test.sh
+#   bash plugins/agentic-eds/skills/eds-prototype/scripts/place-assets.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a project root in a temporary directory — a design-reference.json whose

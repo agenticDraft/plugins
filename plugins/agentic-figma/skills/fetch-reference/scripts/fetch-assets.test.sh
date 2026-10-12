@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for fetch-assets.py. Run with:
-#   bash plugins/figma/skills/fetch-reference/scripts/fetch-assets.test.sh
+#   bash plugins/agentic-figma/skills/fetch-reference/scripts/fetch-assets.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Asset sources
 # are local files under a path shaped like the design tool's asset endpoint,

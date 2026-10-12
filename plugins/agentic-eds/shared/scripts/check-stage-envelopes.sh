@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run: bash plugins/eds/shared/scripts/check-stage-envelopes.sh plugins/eds/pack.yaml plugins/eds/skills
+# Run: bash plugins/agentic-eds/shared/scripts/check-stage-envelopes.sh plugins/agentic-eds/pack.yaml plugins/agentic-eds/skills
 #
 # check-stage-envelopes.sh <pack.yaml> <skills dir>
 #

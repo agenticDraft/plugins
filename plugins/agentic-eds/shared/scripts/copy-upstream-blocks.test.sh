@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for copy-upstream-blocks.sh. Run with:
-#   bash plugins/eds/shared/scripts/copy-upstream-blocks.test.sh
+#   bash plugins/agentic-eds/shared/scripts/copy-upstream-blocks.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. prototype, plan
 # and implement all call the script; whichever runs first copies, the later

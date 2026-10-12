@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/skills/eds-extract/scripts/resolve-design-source.py .ai/run-context/fact-record.yaml .ai/run-context/sanitized-spec.md .ai/run-context/fetched-item.json
+# Run: python3 plugins/agentic-eds/skills/eds-extract/scripts/resolve-design-source.py .ai/run-context/fact-record.yaml .ai/run-context/sanitized-spec.md .ai/run-context/fetched-item.json
 #
 # resolve-design-source.py <fact-record.yaml> <sanitized-spec.md> <fetched-item.json>
 #
@@ -125,7 +125,7 @@ def reserved_images(images):
     return [a for a in images if a["filename"].lower() in RESERVED_NAMES]
 
 
-# Run: python3 plugins/eds/skills/eds-extract/scripts/resolve-design-source.py .ai/run-context/fact-record.yaml .ai/run-context/sanitized-spec.md .ai/run-context/fetched-item.json
+# Run: python3 plugins/agentic-eds/skills/eds-extract/scripts/resolve-design-source.py .ai/run-context/fact-record.yaml .ai/run-context/sanitized-spec.md .ai/run-context/fetched-item.json
 def main():
     if len(sys.argv) != 4:
         usage_error("expected exactly 3 arguments")

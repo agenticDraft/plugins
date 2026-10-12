@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for design-fonts.py. Run with:
-#   bash plugins/eds/shared/scripts/design-fonts.test.sh
+#   bash plugins/agentic-eds/shared/scripts/design-fonts.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a design-reference.json, its reference code and a project's CSS in a

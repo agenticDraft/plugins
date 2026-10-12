@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for find-baseline-target.py. Run with:
-#   bash plugins/eds/shared/scripts/find-baseline-target.test.sh
+#   bash plugins/agentic-eds/shared/scripts/find-baseline-target.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Each case builds
 # a git checkout in a temporary directory, because the search reads the files

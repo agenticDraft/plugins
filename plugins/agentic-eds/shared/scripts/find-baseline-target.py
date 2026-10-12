@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 plugins/eds/shared/scripts/find-baseline-target.py <block> <paths.preview> .
+# Run: python3 plugins/agentic-eds/shared/scripts/find-baseline-target.py <block> <paths.preview> .
 #
 # find-baseline-target.py <block> <preview-url> [project-root]
 #

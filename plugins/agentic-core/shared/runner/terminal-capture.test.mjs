@@ -71,7 +71,7 @@ test("the last captured terminal state wins", () => {
 
 test("nothing is captured from a session that never reaches the formatter", () => {
   const c = new TerminalCapture();
-  c.observe(call("b1", "plugins/github/skills/create-branch/scripts/create-branch.sh eds-22"));
+  c.observe(call("b1", "plugins/agentic-github/skills/create-branch/scripts/create-branch.sh eds-22"));
   c.observe(result("b1", "## Result\nverdict: pass\nsummary: branch ready"));
   assert.equal(c.terminal, null);
 });

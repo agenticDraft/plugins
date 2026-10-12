@@ -51,7 +51,7 @@ append_to_section() {
 }
 
 echo "[accept] this pack's own skills"
-expect "plugins/eds/skills conforms" 0 "valid: lint ownership" "$SKILLS"
+expect "plugins/agentic-eds/skills conforms" 0 "valid: lint ownership" "$SKILLS"
 
 fresh
 printf '\nRun `npx eslint blocks/` and `npx stylelint "blocks/**/*.css"`.\n' \

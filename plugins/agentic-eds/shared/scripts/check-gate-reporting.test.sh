@@ -40,7 +40,7 @@ fresh() {
 }
 
 echo "[accept] this pack's own skills"
-expect "plugins/eds/skills conforms" 0 "valid: gate reporting" "$SKILLS"
+expect "plugins/agentic-eds/skills conforms" 0 "valid: gate reporting" "$SKILLS"
 expect "both gates are recognised" 0 "2 gates" "$SKILLS"
 
 echo "[reject] text instructed after the block"

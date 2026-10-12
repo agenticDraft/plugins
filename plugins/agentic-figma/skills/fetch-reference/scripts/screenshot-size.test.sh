@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for screenshot-size.py. Run with:
-#   bash plugins/figma/skills/fetch-reference/scripts/screenshot-size.test.sh
+#   bash plugins/agentic-figma/skills/fetch-reference/scripts/screenshot-size.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise.
 

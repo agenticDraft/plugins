@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for write-design-reference.py. Run with:
-#   bash plugins/eds/skills/eds-extract/scripts/write-design-reference.test.sh
+#   bash plugins/agentic-eds/skills/eds-extract/scripts/write-design-reference.test.sh
 #
 # No framework — exits 0 when every case passes, 1 otherwise. Inputs are built
 # in a temporary directory per case. Each case runs the script from its own

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run: bash plugins/eds/shared/scripts/check-lint-ownership.sh plugins/eds/skills
+# Run: bash plugins/agentic-eds/shared/scripts/check-lint-ownership.sh plugins/agentic-eds/skills
 #
 # check-lint-ownership.sh <skills dir>
 #

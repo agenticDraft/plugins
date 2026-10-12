@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for measure.cjs. Run with:
-#   bash plugins/playwright/skills/measure/scripts/measure.test.sh
+#   bash plugins/agentic-playwright/skills/measure/scripts/measure.test.sh
 #
 # No browser — exits 0 on success, 1 if anything failed. Checks the fixed
 # property set, holds_text and broken_words against a fake page, the

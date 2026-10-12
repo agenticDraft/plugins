@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests that this pack declares its own automation package, in the form the
 # host installs, and that nothing in the pack installs it. Run with:
-#   bash plugins/playwright/scripts/declared-dependency.test.sh
+#   bash plugins/agentic-playwright/scripts/declared-dependency.test.sh
 #
 # No framework, no network, no browser — exits 0 when every case passes, 1
 # otherwise.
