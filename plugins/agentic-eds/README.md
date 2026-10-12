@@ -214,6 +214,15 @@ paths:
 
 **The offline test suites, this run:** 25 test files, every one exit 0.
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-eds@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Load the pack with the core and one provider pack per role, from the directory that holds

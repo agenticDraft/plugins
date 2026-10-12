@@ -145,6 +145,15 @@ $ bash plugins/agentic-playwright/skills/measure/scripts/measure.test.sh
 passed: 15, failed: 0
 ```
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-playwright@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Make the two declared tools present, using the manifest's own remedies:

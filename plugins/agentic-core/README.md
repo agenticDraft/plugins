@@ -213,6 +213,15 @@ valid: no narrative (477 files scanned)
 
 **The test suites, this run:** 63 test files, every one exit 0.
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-core@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Load the core together with one platform pack and one provider pack per role the project

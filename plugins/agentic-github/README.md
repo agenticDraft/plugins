@@ -115,6 +115,15 @@ $ bash plugins/agentic-github/skills/create-branch/scripts/create-branch.test.sh
 === 13 passed, 0 failed ===
 ```
 
+## Install
+
+```text
+/plugin marketplace add agenticDraft/plugins
+/plugin install agentic-github@agenticdraft
+```
+
+A project installs it by the `settings.json` in `docs/getting-started.md` at the repository root.
+
 ## Running it yourself
 
 1. Authenticate `gh` on the machine and confirm it: `gh auth status`. Headless: export
