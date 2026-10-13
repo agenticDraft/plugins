@@ -17,8 +17,16 @@
 # holds the run being resumed, and this check at its fresh start is what
 # guarantees that everything dirty on resume is the run's own.
 #
+# A check made earlier, by the code that starts the session, is honoured: the
+# marker file .ai/run-context/tree-prechecked holds the HEAD commit that check
+# was made on. When it equals this checkout's HEAD the answer is "clean:
+# checked before the session"; an absent, empty or different marker is
+# ignored and the check below runs in full. The marker is written only after a
+# clean answer from this script, run outside the session.
+#
 # Exit codes:
-#   0 — "clean: no change and no untracked path"
+#   0 — "clean: no change and no untracked path", or
+#       "clean: checked before the session"
 #   1 — "refused: <n> paths changed before this run", then one
 #       "changed: <path>" line per path, sorted, each once
 #   2 — usage error, or the change set could not be computed (the
@@ -33,6 +41,15 @@ ROOT="${1:-}"
 if [[ -z "$ROOT" || ! -d "$ROOT" || $# -ne 1 ]]; then
   echo "usage: check-tree-clean.sh <project-root>" >&2
   exit 2
+fi
+
+MARKER="$ROOT/.ai/run-context/tree-prechecked"
+if [[ -s "$MARKER" ]]; then
+  HEAD_NOW="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
+  if [[ -n "$HEAD_NOW" && "$(head -n 1 "$MARKER")" == "$HEAD_NOW" ]]; then
+    echo "clean: checked before the session"
+    exit 0
+  fi
 fi
 
 CHANGED="$(bash "$LIST" "$ROOT")" || exit 2
