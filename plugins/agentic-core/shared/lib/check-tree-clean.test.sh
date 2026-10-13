@@ -111,6 +111,44 @@ printf 'committed\n' >> "$ROOT/tracked.txt"
 commit "$ROOT" -am "on the branch only"
 refused "ahead" "tracked.txt"
 
+MARKER_REL=".ai/run-context/tree-prechecked"
+write_marker() { mkdir -p "$ROOT/.ai/run-context"; printf '%s\n' "$1" > "$ROOT/$MARKER_REL"; }
+
+echo "[prechecked] a marker holding this checkout's HEAD stands for a check made before the session"
+fresh_clone
+printf 'u\n' > "$ROOT/sandbox-made.txt"
+write_marker "$(git -C "$ROOT" rev-parse HEAD)"
+OUT="$(bash "$GUARD" "$ROOT" 2>&1)"; ST=$?
+check "matching marker, tree seen as dirty -> exit 0" "0" "$ST"
+check "matching marker -> says where the check was made" "clean: checked before the session" "$OUT"
+
+echo "[prechecked] a marker for another commit is not trusted"
+fresh_clone
+printf 'u\n' > "$ROOT/sandbox-made.txt"
+write_marker "0000000000000000000000000000000000000000"
+OUT="$(bash "$GUARD" "$ROOT" 2>&1)"; ST=$?
+check "stale marker -> exit 1" "1" "$ST"
+check "stale marker -> the count line" "refused: 2 paths changed before this run" "$(head -1 <<< "$OUT")"
+
+echo "[prechecked] an empty marker is not trusted"
+fresh_clone
+printf 'u\n' > "$ROOT/sandbox-made.txt"
+mkdir -p "$ROOT/.ai/run-context"; : > "$ROOT/$MARKER_REL"
+bash "$GUARD" "$ROOT" >/dev/null 2>&1; check "empty marker -> exit 1" "1" "$?"
+
+echo "[prechecked] a marker moves no further than HEAD: a commit made afterwards invalidates it"
+fresh_clone
+write_marker "$(git -C "$ROOT" rev-parse HEAD)"
+git -C "$ROOT" switch -q -c item-2
+printf 'later\n' >> "$ROOT/tracked.txt"
+commit "$ROOT" -am "after the check"
+bash "$GUARD" "$ROOT" >/dev/null 2>&1; check "marker for the old HEAD -> exit 1" "1" "$?"
+
+echo "[prechecked] no marker: the check is unchanged"
+fresh_clone
+printf 'u\n' > "$ROOT/sandbox-made.txt"
+bash "$GUARD" "$ROOT" >/dev/null 2>&1; check "dirty, no marker -> exit 1" "1" "$?"
+
 echo "[agree] the refused set is exactly the publish gate's change set"
 fresh_clone
 printf 'edit\n' >> "$ROOT/tracked.txt"
