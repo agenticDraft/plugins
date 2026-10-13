@@ -25,6 +25,12 @@ Each plugin keeps a single source of truth. In `no-hallucinations`, the hook and
 |---|---|---|---|
 | **no-hallucinations** | Truthfulness rules for every response: no made-up facts or sources, uncertainty stated with the claim, no reflexive agreement | `SessionStart` + `UserPromptSubmit` hooks, plus the `be-honest` skill | [README](plugins/no-hallucinations/README.md) |
 | **made-decision** | A six-step decision interview using OOCEMR: Outcomes, Options, Consequences, Evaluate, Mitigate, Resolve. One question at a time, and its own verdict only at the end | `decision-making` skill, invoked explicitly or triggered by a described dilemma | [README](plugins/made-decision/README.md) |
+| **agentic-core** | The delivery route driver: runs stages, validates each result, branches on the verdict, ends in `delivered`, `blocked` or `failed`. Names no tracker, SCM, design tool or browser | Skills `setup`, `health`, `run-route`, plus the checks they call | [README](plugins/agentic-core/README.md) |
+| **agentic-eds** | Platform pack for an Edge Delivery project: binds every stage of the default route to the platform's conventions | Stage skills and a gate-reviewer agent, called by the driver | [README](plugins/agentic-eds/README.md) |
+| **agentic-jira** | Tracker provider: fetch, comment on, attach to, list, update and create Jira work items | Skills over the Jira Cloud REST API | [README](plugins/agentic-jira/README.md) |
+| **agentic-github** | SCM provider: create a branch, publish a change as a pull request, read its checks | Skills over the `gh` CLI | [README](plugins/agentic-github/README.md) |
+| **agentic-figma** | Design provider: fetch a Figma node's values, assets and a reference screenshot | A skill over the Figma MCP server | [README](plugins/agentic-figma/README.md) |
+| **agentic-playwright** | Browser provider: render, capture, measure and interact with a page in headless Chromium | Skills over the playwright library | [README](plugins/agentic-playwright/README.md) |
 
 ## The flow
 
@@ -63,6 +69,9 @@ The skill and its evals require every message to open with a step marker, so you
 ```
 
 ## Running it yourself
+
+The delivery plugins have their own guide: [`docs/getting-started.md`](docs/getting-started.md).
+
 
 1. Add the marketplace:
 
@@ -114,6 +123,14 @@ claude --plugin-dir ./plugins/<plugin-name> -p "/<plugin-name>:<skill-name> <tes
 /plugin install <plugin-name>@agenticdraft
 ```
 
+Run every test the repository ships, and the version rule CI applies to a pull request:
+
+```bash
+(cd plugins/agentic-core/shared/runner && npm ci)   # once; the runner's tests need it
+bash scripts/run-tests.sh                           # every *.test.sh and *.test.mjs; prints files=<n> fail=<n>
+bash scripts/check-plugin-versions.sh origin/main   # a changed plugin must carry a new version
+```
+
 Adding a plugin: create `plugins/<name>/.claude-plugin/plugin.json` and `plugins/<name>/skills/<skill>/SKILL.md`, add an entry to `.claude-plugin/marketplace.json`, then run both validate commands. [`CLAUDE.md`](CLAUDE.md) lists the details and the known gotchas.
 
 ## Layout
@@ -122,7 +139,14 @@ Adding a plugin: create `plugins/<name>/.claude-plugin/plugin.json` and `plugins
 .claude-plugin/marketplace.json          # the catalog, one entry per plugin
 plugins/
 ├── no-hallucinations/                   # always-on truthfulness rules (hooks + skill)
-└── made-decision/                       # on-demand OOCEMR decision interview (skill + evals)
+├── made-decision/                       # on-demand OOCEMR decision interview (skill + evals)
+├── agentic-core/                        # delivery route driver and its checks
+├── agentic-eds/                         # Edge Delivery platform pack (its `core` link points at agentic-core/shared)
+├── agentic-jira/  agentic-github/       # tracker and SCM provider packs
+└── agentic-figma/ agentic-playwright/   # design and browser provider packs
+scripts/                                 # run-tests.sh, check-plugin-versions.sh and the test for it
+.github/workflows/                       # one validate workflow per plugin group, plus the version check
+docs/getting-started.md                  # a new project's settings.json, install and first route run
 example-project/                         # per-project install via committed .claude/settings.json
 ```
 

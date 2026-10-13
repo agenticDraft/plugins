@@ -1,0 +1,8 @@
+kind: provider
+role: browser
+operations:
+  render: render
+  capture: capture
+  measure: measure
+  interact: interact
+unsupported: []
