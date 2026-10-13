@@ -126,7 +126,14 @@ in_list() {
 # root — not just in pack.yaml, but in every generated skill file too, since
 # that is where an unanswered interview question would actually leak. The
 # reserved marker is the literal two-character sequence "{{".
-PLACEHOLDER_HIT="$(grep -rl '{{' "$PACK_ROOT" 2>/dev/null | head -n 1)"
+#
+# Not generated content, so not scanned: node_modules, fixtures/ and *.test.sh
+# anywhere, and the pack's own top-level core/. In git core/ is a symlink to
+# agentic-core/shared (find does not follow it); an install unrolls it into a
+# real directory whose scripts, docs and fixtures legitimately carry the marker.
+PLACEHOLDER_HIT="$(find "$PACK_ROOT" \
+    \( -name node_modules -o -name fixtures -o -path "$PACK_ROOT/core" \) -prune -o \
+    -type f ! -name '*.test.sh' -exec grep -l '{{' {} + 2>/dev/null | head -n 1)"
 if [[ -n "$PLACEHOLDER_HIT" ]]; then
   fail "unfilled template placeholder in ${PLACEHOLDER_HIT#$PACK_ROOT/}"
 fi

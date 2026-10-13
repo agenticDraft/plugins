@@ -690,6 +690,29 @@ OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/unfilled-placeholder/pack.yaml
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason names the placeholder" "placeholder" "$OUT"
 
+# An installed pack carries core/ as a real directory (git stores it as a
+# symlink to agentic-core/shared; install unrolls it). That vendored copy, its
+# tests, its fixtures and node_modules legitimately contain the marker.
+echo "[accept] a marker inside a vendored core/, *.test.sh, fixtures/ and node_modules"
+VEND_TMP="$(mktemp -d "${TMPDIR:-/tmp}/validate-pack-manifest-vendored.XXXXXX")"
+cp -R "$FIXDIR/platform-valid/." "$VEND_TMP/"
+mkdir -p "$VEND_TMP/core/lib" "$VEND_TMP/core/fixtures/x" "$VEND_TMP/node_modules/dep" "$VEND_TMP/fixtures"
+echo 'x={{y}}' > "$VEND_TMP/core/lib/generate-pack.sh"
+echo 'x={{y}}' > "$VEND_TMP/core/lib/generate-pack.test.sh"
+echo 'x={{y}}' > "$VEND_TMP/core/fixtures/x/pack.yaml"
+echo 'x={{y}}' > "$VEND_TMP/node_modules/dep/index.js"
+echo 'x={{y}}' > "$VEND_TMP/fixtures/case.yaml"
+echo 'x={{y}}' > "$VEND_TMP/pack.test.sh"
+OUT=$(bash "$VALIDATOR" "$VEND_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "accepted (exit 0)" 0 $ST "$OUT"
+
+echo "[reject] a marker in generated skill content still fails"
+echo 'Run {{command}} now' >> "$VEND_TMP/skills/intake/SKILL.md"
+OUT=$(bash "$VALIDATOR" "$VEND_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "names the skill file" "skills/intake/SKILL.md" "$OUT"
+rm -rf "$VEND_TMP"
+
 echo "[reject] validator 1 — a stage id outside the fifteen"
 OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/stage-id-not-in-vocabulary/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
