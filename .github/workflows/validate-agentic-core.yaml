@@ -1,0 +1,35 @@
+name: Validate agentic-core
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/agentic-core/**'
+      - 'scripts/**'
+      - '.github/workflows/validate-agentic-core.yaml'
+  pull_request:
+    # No branch filter on purpose: a pull request into any long-lived branch changes these
+    # files just as much as one into main. The paths filter keeps this cheap.
+    paths:
+      - 'plugins/agentic-core/**'
+      - 'scripts/**'
+      - '.github/workflows/validate-agentic-core.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install the runner's dependencies
+        run: npm ci
+        working-directory: plugins/agentic-core/shared/runner
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: every agentic-core suite
+        run: bash scripts/run-tests.sh plugins/agentic-core
+      - name: Validate plugin manifest
+        run: claude plugin validate plugins/agentic-core --strict

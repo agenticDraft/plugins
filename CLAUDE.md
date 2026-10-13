@@ -37,7 +37,22 @@ claude --plugin-dir ./plugins/<plugin-name> -p "/<plugin-name>:<skill-name> <tes
 claude --debug
 ```
 
-There is no test runner in this repo. Each plugin that ships one keeps scripted scenarios in
+The delivery plugins (`agentic-*`) ship offline tests, run together by `scripts/run-tests.sh`:
+
+```bash
+(cd plugins/agentic-core/shared/runner && npm ci)   # once
+bash scripts/run-tests.sh [dir ...]                 # every *.test.sh and *.test.mjs; prints files=<n> fail=<n>
+bash scripts/check-plugin-versions.sh origin/main   # rule below, as CI runs it on a pull request
+```
+
+A file that cannot run counts as a failure; do not skip a suite to make a run green. On macOS the
+`resolve-plugin-root` test needs a `TMPDIR` under `/private/tmp`.
+
+**A plugin whose files changed carries a new `version` in its `plugin.json`, and the catalog entry
+in `marketplace.json` carries the same one.** CI (`check-plugin-versions.yaml`) fails a pull request
+otherwise.
+
+`no-hallucinations` and `made-decision` have no test runner: they keep scripted scenarios in
 `plugins/<plugin-name>/evals/evals.json` (query + expected-behavior checklist per scenario) —
 treat these as the spec to check a skill's behavior against when editing it, not as something
 invoked by a command in this repo.
@@ -114,6 +129,11 @@ only — never hand-edit the hook's injected text separately, or the two will dr
 plugins/
   no-hallucinations/                 # hook-driven, always-on truthfulness rules (see pattern above)
   made-decision/                     # on-demand OOCEMR decision-making interview skill
+  agentic-core/                      # delivery route driver; agentic-eds/jira/github/figma/playwright
+  agentic-eds/ agentic-jira/ ...     #   are its platform and provider packs (see docs/getting-started.md)
+scripts/                             # run-tests.sh, check-plugin-versions.sh
+.github/workflows/                   # validate-* per plugin group, check-plugin-versions
+docs/getting-started.md              # new-project guide for the delivery plugins
 example-project/                     # reference for project-scoped install via committed .claude/settings.json
 ```
 
@@ -122,3 +142,8 @@ example-project/                     # reference for project-scoped install via 
 repo folder. The key in `extraKnownMarketplaces`, the part after `@` in `enabledPlugins`, and
 `marketplace.json`'s `name` field must all match exactly, or the plugin silently fails to
 resolve.
+
+Each `agentic-*` pack resolves its siblings by plugin `name` through `agentic-core`'s resolver, never by
+folder path, and `plugins/agentic-eds/core` is a symlink to `../agentic-core/shared`. Skills are
+invoked as `agentic-<pack>:<skill>`; the official Figma plugin's `figma:figma-design-to-code` is not ours
+and keeps its name.

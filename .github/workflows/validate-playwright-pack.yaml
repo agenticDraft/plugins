@@ -1,0 +1,39 @@
+name: Validate agentic-playwright pack
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/agentic-playwright/**'
+      - 'plugins/agentic-core/**'
+      - '.github/workflows/validate-playwright-pack.yaml'
+  pull_request:
+    paths:
+      - 'plugins/agentic-playwright/**'
+      - 'plugins/agentic-core/**'
+      - '.github/workflows/validate-playwright-pack.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install the runner's dependencies
+        run: npm ci
+        working-directory: plugins/agentic-core/shared/runner
+      # The manifest check scans the plugin folder, so it runs before `npm ci` fills node_modules.
+      - name: Validate agentic-playwright pack manifest
+        run: bash plugins/agentic-core/shared/lib/validate-pack-manifest.sh plugins/agentic-playwright/pack.yaml
+      - name: Install the playwright pack's dependencies
+        run: npm ci
+        working-directory: plugins/agentic-playwright
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: every agentic-playwright suite
+        run: bash scripts/run-tests.sh plugins/agentic-playwright
+      - name: Validate plugin manifest
+        run: claude plugin validate plugins/agentic-playwright --strict
