@@ -45,6 +45,12 @@ bash scripts/run-tests.sh [dir ...]                 # every *.test.sh and *.test
 bash scripts/check-plugin-versions.sh origin/main   # rule below, as CI runs it on a pull request
 ```
 
+```bash
+bash scripts/run-tests.sh plugins/agentic-core              # one plugin's suites (what CI runs)
+bash plugins/agentic-core/shared/lib/<name>.test.sh         # a single shell suite
+node --test plugins/agentic-core/shared/runner/<name>.test.mjs   # a single runner suite
+```
+
 A file that cannot run counts as a failure; do not skip a suite to make a run green. On macOS the
 `resolve-plugin-root` test needs a `TMPDIR` under `/private/tmp`.
 
@@ -103,6 +109,26 @@ same thing, so **`skills/be-honest/SKILL.md` is the single source of truth**:
 `scripts/inject-rules.sh` strips its YAML frontmatter and prints the body verbatim for the
 `SessionStart` hook (see `hooks/hooks.json`). When changing the rules, edit the skill file
 only — never hand-edit the hook's injected text separately, or the two will drift apart.
+
+## The agentic-* delivery core (big picture)
+
+- **The core names roles, never products.** `agentic-core` defines four roles (`tracker`, `scm`,
+  `design`, `browser`) and fifteen stage ids; platform and provider packs bind them to their own
+  skills. Product names live only in packs.
+- **Every stage returns one result envelope** (`shared/result-envelope.md`: `verdict`, `summary`,
+  `artifacts`, `next_action`). The driver, `skills/run-route`, reads only that envelope, never
+  the files under `artifacts:`, and never retries a stage. A `PreToolUse` hook on `Read`
+  (`skills/run-route/scripts/check-driver-read.sh`) enforces it while a run is live.
+- **A run ends in exactly one of `delivered`, `blocked`, `failed`.** `warn` is never terminal.
+  Questions are asked at stage boundaries only (`verdict: question`).
+- **Configuration is one file**, `.ai/project-config.yaml`, written by the `setup` skill and read
+  by every pack.
+- **Logic that can be a script is a script**: `shared/lib/*.sh` holds the validators and writers
+  the driver and packs call, each with a `.test.sh` beside it. A new script there needs one.
+- **CI-enforced guards on shipped files**: `shared/lib/validate-naming-rule.sh` scans the core for
+  a product-name denylist; `shared/lib/check-no-narrative.sh` rejects a path this repository does
+  not publish (resolved with `git check-ignore`) and any provenance/rationale section heading.
+  A README or skill that cites a planning document fails both CI and the local suite.
 
 ## Known gotchas (learned the hard way in this repo)
 
