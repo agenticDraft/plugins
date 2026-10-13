@@ -52,6 +52,20 @@ A file that cannot run counts as a failure; do not skip a suite to make a run gr
 in `marketplace.json` carries the same one.** CI (`check-plugin-versions.yaml`) fails a pull request
 otherwise.
 
+### Release tag
+
+- A change to any file under `plugins/agentic-*` ships as a release: bump `version` in the
+  changed plugins' `plugin.json` and `marketplace.json` (existing rule), and after the pull
+  request is merged, tag the merge commit on `main` as `v<MAJOR>.<MINOR>.<PATCH>`.
+- The tag equals the bumped `version` (the agentic-* plugins move together, so one tag per
+  release). Format is exactly `vX.Y.Z`; no suffixes, no other prefixes.
+- Consumers pin the marketplace to this tag (`extraKnownMarketplaces` ref and the `_plugins`
+  checkout ref in aem-eds-ai-workflow-demo) and find the newest release by listing `v*` tags.
+  A merged change without a tag is invisible to them.
+- Creating and pushing a tag is outward-facing: propose the number, and create it only after
+  the human says yes. Never move or delete an existing tag; a fix is a new patch version.
+- The pull request description states the proposed tag.
+
 `no-hallucinations` and `made-decision` have no test runner: they keep scripted scenarios in
 `plugins/<plugin-name>/evals/evals.json` (query + expected-behavior checklist per scenario) —
 treat these as the spec to check a skill's behavior against when editing it, not as something
