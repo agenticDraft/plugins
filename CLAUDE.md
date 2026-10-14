@@ -170,10 +170,10 @@ plugins/
   no-hallucinations/                 # hook-driven, always-on truthfulness rules (see pattern above)
   made-decision/                     # on-demand OOCEMR decision-making interview skill
   agentic-core/                      # delivery route driver; agentic-eds/jira/github/figma/playwright
-  agentic-eds/ agentic-jira/ ...     #   are its platform and provider packs (see docs/getting-started.md)
+  agentic-eds/ agentic-jira/ ...     #   are its platform and provider packs (see plugins/getting-started.md)
 scripts/                             # run-tests.sh, check-plugin-versions.sh
 .github/workflows/                   # validate-* per plugin group, check-plugin-versions
-docs/getting-started.md              # new-project guide for the delivery plugins
+plugins/getting-started.md           # new-project guide; plugins/README.md describes the whole project
 example-project/                     # reference for project-scoped install via committed .claude/settings.json
 ```
 
