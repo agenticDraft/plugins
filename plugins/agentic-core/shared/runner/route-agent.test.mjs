@@ -14,6 +14,16 @@ import { fileURLToPath } from "node:url";
 
 const RUNNER = join(dirname(fileURLToPath(import.meta.url)), "route-agent.mjs");
 
+// The runner imports its SDK at load, so without the installed dependencies it cannot start.
+const SKIP = (() => {
+  try {
+    import.meta.resolve("@anthropic-ai/claude-agent-sdk");
+    return false;
+  } catch {
+    return "runner dependencies are not installed";
+  }
+})();
+
 function start(env) {
   const cwd = mkdtempSync(join(process.env.TMPDIR || tmpdir(), "route-agent-"));
   const base = { ...process.env };
@@ -31,18 +41,18 @@ function start(env) {
   return { status: run.status, stderr: run.stderr, result };
 }
 
-test("an unset ROUTE_PLUGIN_DIR starts nothing: exit 7, said in the log and the result", () => {
+test("an unset ROUTE_PLUGIN_DIR starts nothing: exit 7, said in the log and the result", { skip: SKIP }, () => {
   const r = start({});
   assert.equal(r.status, 7, r.stderr);
   assert.match(r.stderr, /plugin directory refused: ROUTE_PLUGIN_DIR is not set/);
   assert.match(r.result, /plugin directory refused: ROUTE_PLUGIN_DIR is not set/);
 });
 
-test("an empty ROUTE_PLUGIN_DIR is refused the same way", () => {
+test("an empty ROUTE_PLUGIN_DIR is refused the same way", { skip: SKIP }, () => {
   assert.equal(start({ ROUTE_PLUGIN_DIR: "" }).status, 7);
 });
 
-test("a set ROUTE_PLUGIN_DIR passes on to the next refusal, the missing policy", () => {
+test("a set ROUTE_PLUGIN_DIR passes on to the next refusal, the missing policy", { skip: SKIP }, () => {
   const r = start({ ROUTE_PLUGIN_DIR: "absent-folder" });
   assert.equal(r.status, 3, r.stderr);
   assert.doesNotMatch(r.stderr, /plugin directory refused/);

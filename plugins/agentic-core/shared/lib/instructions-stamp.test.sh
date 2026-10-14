@@ -101,8 +101,12 @@ echo "[shipped] the driver's own instructions carry a current stamp"
 # This is the regression guard, not a unit case: editing run-route/SKILL.md
 # without regenerating its stamp makes every run refuse to start, and this is
 # where that is caught instead -- before the edit is merged.
+# The cases that read the core plugin's own files run only where this suite sits inside it.
+in_core_plugin() { grep -q '"name": *"agentic-core"' "$1/.claude-plugin/plugin.json" 2>/dev/null; }
 DRIVER="$SCRIPT_DIR/../../skills/run-route/SKILL.md"
-if [[ -f "$DRIVER" ]]; then
+if ! in_core_plugin "$SCRIPT_DIR/../.."; then
+  echo "  skipped: not inside the core plugin"
+elif [[ -f "$DRIVER" ]]; then
   OUT="$(bash "$STAMP" "$DRIVER" 2>&1)"; S=$?
   [[ "$S" == 0 ]] && ok "run-route/SKILL.md verifies (${OUT})" \
     || bad "run-route/SKILL.md verifies" "$OUT" "regenerate with: bash ${STAMP##*/} --write <that file>"
