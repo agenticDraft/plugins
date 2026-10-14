@@ -127,7 +127,7 @@ Run every test the repository ships, and the version rule CI applies to a pull r
 
 ```bash
 (cd plugins/agentic-core/shared/runner && npm ci)   # once; the runner's tests need it
-bash scripts/run-tests.sh                           # every *.test.sh and *.test.mjs; prints files=<n> fail=<n>
+bash scripts/run-tests.sh                           # every *.test.sh and *.test.mjs; prints files=<n> fail=<n> skipped=<n>
 bash scripts/check-plugin-versions.sh origin/main   # a changed plugin must carry a new version
 ```
 
