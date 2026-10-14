@@ -108,6 +108,19 @@ A headless run (the runner, started by CI or a trigger) needs two things a bare 
 
 The runner starts nothing without them: it exits `3` when the policy is missing and `6` when the allowlist is missing or unusable. An interactive session in steps 1 to 5 needs neither.
 
+## Letting Claude follow this guide
+
+To have Claude do steps 1 and 2 for you, open Claude Code in the project and paste this into the first session, with the tag you want in place of `<tag>`:
+
+```text
+Follow https://github.com/agenticDraft/plugins/blob/<tag>/plugins/getting-started.md step by step in this project,
+steps 1 and 2 only. Do one step at a time and show me each file before you write it. Never write a token or
+a password into a file that git tracks; I will set credentials myself. If a step needs something the guide
+does not say, stop and tell me what is missing instead of guessing. When step 2 is done, tell me to start a new session.
+```
+
+Then start a second session and paste the same prompt with "steps 3 to 5 only" in place of "steps 1 and 2 only" and without the last sentence.
+
 ## What this guide has not verified
 
-This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. A step that needs something this page does not say is a defect in the page.
+This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. The prompts in "Letting Claude follow this guide" have not been run. A step that needs something this page does not say is a defect in the page.
