@@ -216,21 +216,25 @@ run note --manifest "$MANIFEST" --branch eds-18 "${COMMON[@]}"
 assert_eq "note without --item-id/--pr-url → exit 2" "2" "$CODE"
 
 echo "[boundary] the core names neither the limit nor the draft server"
-# The whole core plugin, resolved by name after registering the source tree
-# into a temp project: the core link holds only its shared/ directory.
+# The whole core plugin, resolved by name after registering the source tree into a temp
+# project: the core link holds only its shared/ directory. Where the registry lists no
+# core, this pack's own copy of the core is read instead.
 CORE_LIB="$SCRIPT_DIR/../../core/lib"
 . "$CORE_LIB/register-source-tree.sh"
 CORE=""
 if register_source_tree "$WORK/roots-project" \
    && CORE=$(bash "$CORE_LIB/resolve-plugin-root.sh" agentic-core --project-dir "$WORK/roots-project" 2>&1) \
    && [ -d "$CORE/shared" ]; then
-  if grep -rIl -e 'check-branch-length' -e 'draft server' -e 'delivery-text' "$CORE" >/dev/null 2>&1; then
-    bad "core names none of them" "$(grep -rIl -e 'check-branch-length' -e 'draft server' -e 'delivery-text' "$CORE" | head -3)"
-  else
-    ok "core names none of them"
-  fi
+  :
 else
+  CORE="$SCRIPT_DIR/../../core/"
+fi
+if [ ! -d "$CORE" ]; then
   bad "the core plugin is resolved" "${CORE:-no registry}"
+elif grep -rIl -e 'check-branch-length' -e 'draft server' -e 'delivery-text' "$CORE" >/dev/null 2>&1; then
+  bad "core names none of them" "$(grep -rIl -e 'check-branch-length' -e 'draft server' -e 'delivery-text' "$CORE" | head -3)"
+else
+  ok "core names none of them"
 fi
 
 echo "=== $PASS passed, $FAIL failed ==="

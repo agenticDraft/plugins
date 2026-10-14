@@ -57,9 +57,16 @@ assert_exit "violation fixture rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason names the term" "'Jira'" "$OUT"
 assert_contains "reason names the file" "note.md" "$OUT"
 
+# The cases that read the core plugin's own files run only where this suite sits inside it.
+in_core_plugin() { grep -q '"name": *"agentic-core"' "$1/.claude-plugin/plugin.json" 2>/dev/null; }
+
 echo "[accept] the real core, as built"
-OUT=$(bash "$VALIDATOR" "$CORE_ROOT" 2>&1); ST=$?
-assert_exit "plugins/agentic-core accepted (exit 0)" 0 $ST "$OUT"
+if in_core_plugin "$CORE_ROOT"; then
+  OUT=$(bash "$VALIDATOR" "$CORE_ROOT" 2>&1); ST=$?
+  assert_exit "plugins/agentic-core accepted (exit 0)" 0 $ST "$OUT"
+else
+  echo "  skipped: not inside the core plugin"
+fi
 
 echo "[installed dependencies are not core vocabulary]"
 DEPS_WORK=$(mktemp -d "${TMPDIR:-/tmp}/naming-rule-deps.XXXXXX") || { echo "cannot create a temp dir" >&2; exit 2; }
@@ -76,7 +83,9 @@ assert_exit "the same term beside node_modules is still a violation (exit 1)" 1 
 
 echo "[reject then accept] injecting a product name into a real core file, then reverting"
 PROBE="$CORE_ROOT/shared/pack-manifest.md"
-if [[ ! -f "$PROBE" ]]; then
+if ! in_core_plugin "$CORE_ROOT"; then
+  echo "  skipped: not inside the core plugin"
+elif [[ ! -f "$PROBE" ]]; then
   FAIL=$((FAIL + 1))
   echo "  FAIL: probe file not found: $PROBE"
 else

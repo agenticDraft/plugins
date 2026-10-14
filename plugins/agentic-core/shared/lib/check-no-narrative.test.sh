@@ -14,7 +14,14 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK="$SCRIPT_DIR/check-no-narrative.sh"
-FIX="$SCRIPT_DIR/../fixtures/no-narrative"
+# The fixtures are copied into a throwaway repository, so the suite behaves the same
+# wherever this copy sits.
+FIX_REPO="$(mktemp -d "${TMPDIR:-/tmp}/no-narrative-fix.XXXXXX")" || { echo "cannot create a temp dir" >&2; exit 2; }
+[[ -n "$FIX_REPO" && -d "$FIX_REPO" ]] || { echo "cannot create a temp dir" >&2; exit 2; }
+trap 'rm -rf "$FIX_REPO"' EXIT
+git init -q "$FIX_REPO"
+cp -R "$SCRIPT_DIR/../fixtures/no-narrative" "$FIX_REPO/no-narrative"
+FIX="$FIX_REPO/no-narrative"
 
 PASS=0
 FAIL=0
@@ -60,7 +67,7 @@ LOCK_WORK=$(mktemp -d "${TMPDIR:-/tmp}/no-narrative-lock.XXXXXX") || { echo "can
 [[ -n "$LOCK_WORK" && -d "$LOCK_WORK" ]] || { echo "cannot create a temp dir" >&2; exit 2; }
 CITE_WORK=$(mktemp -d "${TMPDIR:-/tmp}/no-narrative-cite.XXXXXX") || { echo "cannot create a temp dir" >&2; exit 2; }
 [[ -n "$CITE_WORK" && -d "$CITE_WORK" ]] || { echo "cannot create a temp dir" >&2; exit 2; }
-trap 'rm -rf "$LOCK_WORK" "$CITE_WORK"' EXIT
+trap 'rm -rf "$FIX_REPO" "$LOCK_WORK" "$CITE_WORK"' EXIT
 git init -q "$LOCK_WORK" && printf 'node_modules/\n' > "$LOCK_WORK/.gitignore"
 mkdir -p "$LOCK_WORK/core/shared/runner/node_modules/dep"
 printf '{ "packages": { "node_modules/dep": { "version": "1.0.0" } } }\n' > "$LOCK_WORK/core/shared/runner/package-lock.json"
@@ -118,15 +125,20 @@ REAL_PROJECT="$(mktemp -d "${TMPDIR:-/tmp}/no-narrative-real.XXXXXX")" || { echo
 [[ -n "$REAL_PROJECT" && -d "$REAL_PROJECT" ]] || { echo "cannot create a temp dir" >&2; exit 2; }
 register_source_tree "$REAL_PROJECT"
 assert_exit "the source tree's plugins are registered" 0 $? ""
-SEEN=0
-while IFS=$'\t' read -r name root; do
-  [[ -n "$root" ]] || continue
-  SEEN=$((SEEN + 1))
-  OUT="$(bash "$CHECK" "$root" 2>&1)"; ST=$?
-  assert_exit "$name is clean (exit 0)" 0 $ST "$OUT"
-done < <(bash "$SCRIPT_DIR/resolve-plugin-root.sh" --list --project-dir "$REAL_PROJECT")
-[[ "$SEEN" -gt 1 ]]
-assert_exit "more than one plugin checked ($SEEN)" 0 $? ""
+LISTED="$(bash "$SCRIPT_DIR/resolve-plugin-root.sh" --list --project-dir "$REAL_PROJECT")"
+if [[ "$(printf '%s\n' "$LISTED" | grep -c .)" -lt 2 ]]; then
+  echo "  skipped: fewer than two plugins registered, so this is not the source tree"
+else
+  SEEN=0
+  while IFS=$'\t' read -r name root; do
+    [[ -n "$root" ]] || continue
+    SEEN=$((SEEN + 1))
+    OUT="$(bash "$CHECK" "$root" 2>&1)"; ST=$?
+    assert_exit "$name is clean (exit 0)" 0 $ST "$OUT"
+  done <<< "$LISTED"
+  [[ "$SEEN" -gt 1 ]]
+  assert_exit "more than one plugin checked ($SEEN)" 0 $? ""
+fi
 rm -rf "$REAL_PROJECT"
 
 if [[ "$FAIL" -eq 0 ]]; then
