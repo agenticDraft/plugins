@@ -41,7 +41,7 @@ The delivery plugins (`agentic-*`) ship offline tests, run together by `scripts/
 
 ```bash
 (cd plugins/agentic-core/shared/runner && npm ci)   # once
-bash scripts/run-tests.sh [dir ...]                 # every *.test.sh and *.test.mjs; prints files=<n> fail=<n>
+bash scripts/run-tests.sh [dir ...]                 # every *.test.sh and *.test.mjs; prints files=<n> fail=<n> skipped=<n>
 bash scripts/check-plugin-versions.sh origin/main   # rule below, as CI runs it on a pull request
 ```
 
