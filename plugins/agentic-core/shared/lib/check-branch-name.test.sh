@@ -172,7 +172,9 @@ while IFS=$'\t' read -r name root; do
   OUT=$(bash "$CHECK" x --config "$WORK/real.yaml" --project-dir "$REAL" 2>&1); CODE=$?
   assert_eq "shipped platform pack '$name' resolves through the registry" "0" "$CODE"
 done <<< "$LISTED"
-[ "$SEEN" -gt 0 ] && ok "at least one shipped platform pack checked ($SEEN)" || bad "no shipped platform pack was found"
+if [ "$SEEN" -gt 0 ]; then ok "at least one shipped platform pack checked ($SEEN)"
+elif [ "$(printf '%s\n' "$LISTED" | grep -c .)" -lt 2 ]; then echo "  skipped: fewer than two plugins registered, so this is not the source tree"
+else bad "no shipped platform pack was found"; fi
 
 echo "=== $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ]

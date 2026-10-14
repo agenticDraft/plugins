@@ -74,6 +74,11 @@ DRIVER="$SCRIPT_DIR/../../skills/run-route/SKILL.md"
 node_body() {  # node_body <heading text> — the node's lines up to the next heading
   awk -v h="### $1" '$0 == h {on=1; next} on && /^### / {exit} on' "$DRIVER"
 }
+# The cases that read the core plugin's own files run only where this suite sits inside it.
+in_core_plugin() { grep -q '"name": *"agentic-core"' "$1/.claude-plugin/plugin.json" 2>/dev/null; }
+if ! in_core_plugin "$SCRIPT_DIR/../.."; then
+  echo "  skipped: not inside the core plugin"
+else
 FRESH="$(node_body "Fresh start: run intake")"
 RECORD="$(node_body "Record intake stage")"
 if [[ -n "$FRESH" && "$FRESH" != *"write-orchestration-flag.sh"* ]]; then
@@ -85,6 +90,7 @@ if [[ "$RECORD" == *"write-run-state.sh"* && "$RECORD" == *"write-orchestration-
   PASS=$((PASS + 1)); echo "  ok: the node that first writes run state writes the marker too"
 else
   FAIL=$((FAIL + 1)); echo "  FAIL: the record-intake node must write both run state and the marker"
+fi
 fi
 
 echo

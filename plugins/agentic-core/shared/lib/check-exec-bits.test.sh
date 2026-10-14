@@ -81,7 +81,9 @@ while IFS=$'\t' read -r name root; do
   run_check "$root"
   [[ "$ST" == 0 ]] && ok "$name passes ($OUT)" || bad "$name passes" "$OUT"
 done < <(bash "$SCRIPT_DIR/resolve-plugin-root.sh" --list --project-dir "$WORK/real-project")
-[[ "$SEEN" -gt 1 ]] && ok "more than one plugin checked ($SEEN)" || bad "more than one plugin checked" "$SEEN"
+if [[ "$SEEN" -gt 1 ]]; then ok "more than one plugin checked ($SEEN)"
+elif [[ "$SEEN" == 1 ]]; then echo "  skipped: one plugin registered, so this is not the source tree"
+else bad "at least one plugin checked" "$SEEN"; fi
 
 echo
 echo "=== ${PASS} passed, ${FAIL} failed ==="
