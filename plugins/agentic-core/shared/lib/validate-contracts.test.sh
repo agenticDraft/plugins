@@ -91,8 +91,12 @@ assert_exit "plugins/agentic-core accepted (exit 0)" 0 $ST "$OUT"
 assert_contains "run-route counted as branching" "branching)" "$OUT"
 
 echo "[reject then accept] dropping a ### heading from a real shipped skill, then reverting"
+# The cases that read the core plugin's own files run only where this suite sits inside it.
+in_core_plugin() { grep -q '"name": *"agentic-core"' "$1/.claude-plugin/plugin.json" 2>/dev/null; }
 PROBE="$CORE_ROOT/skills/run-route/SKILL.md"
-if [[ ! -f "$PROBE" ]]; then
+if ! in_core_plugin "$CORE_ROOT"; then
+  echo "  skipped: not inside the core plugin"
+elif [[ ! -f "$PROBE" ]]; then
   FAIL=$((FAIL + 1))
   echo "  FAIL: probe file not found: $PROBE"
 else

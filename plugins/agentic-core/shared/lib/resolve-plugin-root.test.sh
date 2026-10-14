@@ -100,23 +100,27 @@ assert_lacks "never claims it is not installed" "installed" "$ERR"
 
 echo "[5] /tmp/<x> and /private/tmp/<x> resolve equal, both directions"
 if [ "$(cd /tmp && pwd -P)" = "/private/tmp" ]; then
-  case "$WORK" in
-    /private/tmp/*)
-      ALIAS="${WORK#/private}"
-      mkdir -p "$WORK/canon/alias-pack"
-      entry alias-pack "$ALIAS/canon/alias-pack"
-      run alias-pack
-      assert_eq "entry written as /tmp/… → exit 0" "0" "$CODE"
-      assert_eq "entry written as /tmp/… → the /private/tmp/… form" "$WORK/canon/alias-pack" "$OUT"
-      FIRST="$OUT"
-      entry alias-pack "$WORK/canon/alias-pack"
-      run alias-pack
-      assert_eq "entry written as /private/tmp/… → the same answer" "$FIRST" "$OUT"
-      OUT=$(bash "$RESOLVER" alias-pack --project-dir "$ALIAS/project" 2>&1); CODE=$?
-      assert_eq "project dir passed as /tmp/… finds the same registry" "$FIRST" "$OUT"
-      ;;
-    *) bad "the temp dir is not under /private/tmp, so the alias cannot be built" "$WORK" ;;
-  esac
+  # Built under /tmp itself, so the alias exists whatever TMPDIR is.
+  AW=$(mktemp -d /tmp/resolve-plugin-root-alias.XXXXXX) || { echo "cannot create a temp dir" >&2; exit 2; }
+  [ -n "$AW" ] && [ -d "$AW" ] || { echo "cannot create a temp dir" >&2; exit 2; }
+  trap 'rm -rf "$WORK" "$AW"' EXIT
+  AW=$(cd "$AW" && pwd -P)
+  SAVED_PROJECT="$PROJECT"; SAVED_REGISTRY="$REGISTRY"
+  PROJECT="$AW/project"; REGISTRY="$PROJECT/.ai/run-context/plugin-roots"
+  mkdir -p "$REGISTRY"
+  ALIAS="${AW#/private}"
+  mkdir -p "$AW/canon/alias-pack"
+  entry alias-pack "$ALIAS/canon/alias-pack"
+  run alias-pack
+  assert_eq "entry written as /tmp/… → exit 0" "0" "$CODE"
+  assert_eq "entry written as /tmp/… → the /private/tmp/… form" "$AW/canon/alias-pack" "$OUT"
+  FIRST="$OUT"
+  entry alias-pack "$AW/canon/alias-pack"
+  run alias-pack
+  assert_eq "entry written as /private/tmp/… → the same answer" "$FIRST" "$OUT"
+  OUT=$(bash "$RESOLVER" alias-pack --project-dir "$ALIAS/project" 2>&1); CODE=$?
+  assert_eq "project dir passed as /tmp/… finds the same registry" "$FIRST" "$OUT"
+  PROJECT="$SAVED_PROJECT"; REGISTRY="$SAVED_REGISTRY"
 else
   echo "  skipped: /tmp and /private/tmp are not the same directory on this machine"
 fi

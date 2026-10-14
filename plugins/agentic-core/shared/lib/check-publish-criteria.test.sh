@@ -324,8 +324,10 @@ done < <(bash "$SCRIPT_DIR/resolve-plugin-root.sh" --list --project-dir "$REAL_P
 rm -rf "$REAL_PROJECT"
 if [[ "$SEEN" -gt 1 ]]; then
   PASS=$((PASS + 1)); echo "  ok: $SEEN plugins scanned"
+elif [[ "$SEEN" == 1 ]]; then
+  echo "  skipped: one plugin registered, so this is not the source tree"
 else
-  FAIL=$((FAIL + 1)); echo "  FAIL: expected more than one plugin, scanned $SEEN"
+  FAIL=$((FAIL + 1)); echo "  FAIL: expected at least one plugin, scanned $SEEN"
 fi
 
 if [[ -z "$OFFENDERS" ]]; then
