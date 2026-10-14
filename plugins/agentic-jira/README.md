@@ -144,7 +144,7 @@ $ bash plugins/agentic-jira/scripts/md-to-adf.test.sh
 /plugin install agentic-jira@agenticdraft
 ```
 
-A project installs it by the `settings.json` in the [getting-started guide](https://github.com/agenticDraft/plugins/blob/main/docs/getting-started.md).
+A project installs it by the `settings.json` in the [getting-started guide](../getting-started.md).
 
 ## Running it yourself
 

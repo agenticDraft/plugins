@@ -115,7 +115,7 @@ Five files, 221 assertions, no network.
 /plugin install agentic-figma@agenticdraft
 ```
 
-A project installs it by the `settings.json` in the [getting-started guide](https://github.com/agenticDraft/plugins/blob/main/docs/getting-started.md).
+A project installs it by the `settings.json` in the [getting-started guide](../getting-started.md).
 
 ## Running it yourself
 
