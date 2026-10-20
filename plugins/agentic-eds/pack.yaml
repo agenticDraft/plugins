@@ -107,6 +107,7 @@ artifacts:
 onboarding_state_path: "styles/design-system.md"
 audit_findings_path: ".ai/design/audit.md"
 audit_digest_path: ".ai/design/audit-digest.txt"
+authoring_examples_path: "work-item-examples"
 evidence_manifest: evidence-manifest
 branch_name:
   pattern: "^[a-z0-9/-]+$"
