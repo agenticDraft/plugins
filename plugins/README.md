@@ -38,6 +38,51 @@ The second is how a piece of work gets delivered: read the ticket, plan, build, 
 
 The core knows four roles by name (`tracker`, `scm`, `design`, `browser`) and never learns which product fills one. The project's `.ai/project-config.yaml` maps each role to a plugin. Swapping Jira for another tracker means a new provider pack, not a change to the core.
 
+## How the plugins find each other
+
+An installed plugin lives in its own versioned folder, such as `~/.claude/plugins/cache/agenticdraft/agentic-jira/0.2.4/`. The path changes with every version, and `..` from one plugin does not reach another. So no plugin knows where another one is. **Each plugin says where it is, and the others ask by name.**
+
+1. **Role to name: project config.** `packs:` in `.ai/project-config.yaml` maps each role to a plugin name. The core gets every name from there and holds none of its own.
+2. **Name to folder: the root registry.** At `SessionStart`, every plugin's own hook runs [`register-plugin-root.sh`](agentic-core/shared/lib/register-plugin-root.sh). It writes that plugin's `${CLAUDE_PLUGIN_ROOT}` to `.ai/run-context/plugin-roots/<name>`, one file per plugin with one line in it. The name comes from the plugin's `plugin.json`, not from its folder, because the folder is called `0.2.4`. The file is written to a temp name and then moved into place, so a reader never sees half a line. The hook prints nothing, because a `SessionStart` hook's stdout becomes session context.
+3. **Lookup: one reader.** [`resolve-plugin-root.sh <name>`](agentic-core/shared/lib/resolve-plugin-root.sh) is the only script that reads the registry. The driver's pre-flight, `setup`, `health`, the branch-name check and every stage that needs another pack all go through it.
+4. **Pack to core: the `core` link.** A pack does not use the registry to reach the core. In the source tree each pack holds `core`, a symlink to `../agentic-core/shared`. In a copy installed from the git marketplace that link arrives as a real folder of files. Either way a pack reaches the core's contracts and scripts as `${CLAUDE_PLUGIN_ROOT}/core/<path>`.
+
+```text
+session start
+  ├── agentic-core hook ──→ .ai/run-context/plugin-roots/agentic-core
+  ├── agentic-eds hook  ──→ .ai/run-context/plugin-roots/agentic-eds
+  └── … one file per enabled plugin
+                                   ↓
+stage needs the tracker
+  → project config: packs.tracker = agentic-jira
+  → resolve-plugin-root.sh agentic-jira
+      1. entry names a folder that exists   → print it, exit 0
+      2. entry names anything else          → refused, exit 3
+      3. no entry → sibling folder beside the core (only when loaded by path from one tree)
+      4. otherwise                          → not resolved, exit 1
+  → caller runs the pack's skill or script; what comes back is still a result envelope
+```
+
+The edge that matters is step 2. A broken entry is refused. The resolver never falls back to the sibling guess when an entry exists. A caller that gets a non-zero exit stops. It never builds a path itself and never treats the pack as optional.
+
+**The three outcomes, run on 2026-10-20** (paths shortened):
+
+```text
+$ resolve-plugin-root.sh agentic-jira
+~/.claude/plugins/cache/agenticdraft/agentic-jira/0.2.3
+exit 0
+
+$ resolve-plugin-root.sh agentic-jira        # entry names /nope/agentic-jira/0.2.9
+refused: agentic-jira — registry entry <project>/.ai/run-context/plugin-roots/agentic-jira names '/nope/agentic-jira/0.2.9', not a directory
+exit 3
+
+$ resolve-plugin-root.sh agentic-zzz
+not resolved: agentic-zzz — no registry entry at <project>/.ai/run-context/plugin-roots/agentic-zzz, no folder at ~/.claude/plugins/cache/agenticdraft/agentic-core/agentic-zzz
+exit 1
+```
+
+The first result shows the registry's limit. The pin was already `0.2.4`, but the entry still named `0.2.3`. That entry was last written five days earlier. It resolved because the `0.2.3` folder was still in the cache. **The registry holds whatever the last hook that ran wrote, and the resolver checks only that the folder exists, not its version.** The full rule, and what was measured before it was adopted, is item 8 under "How it handles it" in [the core's README](agentic-core/README.md#how-it-handles-it).
+
 ## The flow
 
 ```text
