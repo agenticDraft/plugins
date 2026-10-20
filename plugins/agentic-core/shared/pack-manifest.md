@@ -132,7 +132,10 @@ open class.
   non-empty, double-quoted, relative path with no `..` segment. The core never learns what the
   directory holds, so the validator does not open it or test that it exists. A pack that declares
   none leaves the authoring skill with its neutral templates only. A provider manifest carrying it
-  is invalid.
+  is invalid. Two names inside the directory are fixed here, never their content:
+  `component-path.txt` — optional, one regular expression per line, each matching a component path
+  written without the trailing slash the platform's intake needs to record it; and any `*.md` file —
+  a worked work-item draft the authoring skill shows as the platform's example.
 - `branch_name` (D544, D129) — optional. It declares the character rule a branch name must meet on
   this platform: `pattern`, a double-quoted extended regular expression the whole name must match,
   so anchor it. The length limit is not the pack's: it depends on the project, so it lives in the
