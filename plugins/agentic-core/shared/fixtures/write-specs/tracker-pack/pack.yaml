@@ -1,0 +1,11 @@
+kind: provider
+role: tracker
+operations:
+  fetch_item: fixture-fetch
+  create_item: fixture-create
+  update_item: fixture-update
+text_conventions:
+  design_keywords: [design, mock, mockup, style, styling, visual, layout, spacing, colour, color]
+  before_state_keywords: [same as before, unchanged from]
+  reproduction_headings: [Steps to reproduce, Steps]
+  acceptance_criteria_headings: [Acceptance criteria, AC]

@@ -1,0 +1,28 @@
+kind: platform
+stages:
+  - id: intake
+    skill: fixture-intake
+  - id: extract
+    skill: fixture-extract
+    when:
+      - { design_source: true }
+      - { design_mentioned: true }
+  - id: baseline
+    skill: fixture-baseline
+    when:
+      - { components: present }
+  - id: implement
+    skill: fixture-implement
+  - id: deliver
+    skill: fixture-deliver
+always_autonomous: [deliver]
+readiness_criteria:
+  Story:
+    require: [has_description, has_acceptance_criteria, reproduction_content_ok]
+  Bug:
+    require: [has_description, has_reproduction_url, has_reproduction_steps, reproduction_content_ok]
+artifacts:
+  - id: fact-record
+    produced_by: intake
+    path: ".ai/run-context/fact-record.yaml"
+authoring_examples_path: "examples"

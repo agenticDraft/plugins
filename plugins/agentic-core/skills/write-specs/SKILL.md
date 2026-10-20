@@ -27,6 +27,8 @@ That leaves three kinds of rule, with three different owners:
 
 - **What the machine detects** — the checker executes the real detectors and reports what they saw.
 - **House form** — ids, section order, one assertion per criterion. The checker enforces these too.
+  So does the component-path rule, whose patterns come from the configured platform pack; a
+  `not run:` line means that pack supplies none, so nothing about paths was checked.
 - **Whether a criterion is worth asserting** — yours. A script can prove a criterion has an id and
   one assertion; it cannot tell you the assertion is the right one. `references/criterion-checklist.md`
   is the guide for that half, and it is never faked as a script check.
@@ -139,7 +141,7 @@ A new item — go to **Collect what the item has to say**.
 Run the checker against the live item, not against a copy of its text:
 
 ```
-python3 .claude/skills/write-specs/scripts/check-spec.py <ITEM-KEY>
+python3 "${CLAUDE_SKILL_DIR}/scripts/check-spec.py" <ITEM-KEY>
 ```
 
 It fetches through the tracker pack's own fetch operation, so what it reports is what the run would
@@ -200,6 +202,16 @@ spent a run to say what you already know.
 Read the template for this item's type — `references/story-template.md` or
 `references/bug-template.md` — and write the draft at the path chosen in **Identify the item**.
 
+The templates are neutral. The configured platform pack may also ship worked drafts that show how
+an item for that platform reads; list them with:
+
+```
+python3 "${CLAUDE_SKILL_DIR}/scripts/check-spec.py" --examples
+```
+
+Read every `example:` file it prints alongside the template. `examples: none` means the pack ships
+none, and the template is the only model.
+
 The front matter carries the fields the tracker holds outside the description: the item's type and
 summary always, plus its key, labels and components where those are known. The body below it is the
 description exactly as it will appear in the tracker, headings and all.
@@ -215,7 +227,7 @@ Two habits that matter more than they look:
 ### Run the checker
 
 ```
-python3 .claude/skills/write-specs/scripts/check-spec.py <spec_dir>/<ITEM-KEY>/draft.md
+python3 "${CLAUDE_SKILL_DIR}/scripts/check-spec.py" <spec_dir>/<ITEM-KEY>/draft.md
 ```
 
 Read the whole report, not just the exit code. It has two halves and only one of them is about
@@ -277,7 +289,7 @@ outcome or quietly dictates the implementation.
 A criterion that rests on how the platform behaves — what a size includes, how a layout resolves —
 and that no project rule settles is checked against the platform's official reference first: the
 `reference_docs` URL in the configured platform pack's `pack.yaml`. Follow
-`shared/official-reference.md` in the installed `agentic-core` plugin, and put its `reference:` line under the
+`${CLAUDE_PLUGIN_ROOT}/shared/official-reference.md`, and put its `reference:` line under the
 criterion in the draft. A reference that does not answer is written down as not answered, never
 filled from memory.
 
@@ -292,7 +304,7 @@ Every criterion is an outcome someone could check, and together they mean the it
 ### Write the item
 
 ```
-python3 .claude/skills/write-specs/scripts/write-item.py <spec_dir>/<ITEM-KEY>/draft.md [--project <key>]
+python3 "${CLAUDE_SKILL_DIR}/scripts/write-item.py" <spec_dir>/<ITEM-KEY>/draft.md [--project <key>]
 ```
 
 Pass `--project` when the item does not exist yet. The script decides create versus update by
@@ -317,7 +329,7 @@ judged here.
 ### Verify the live item
 
 ```
-python3 .claude/skills/write-specs/scripts/check-spec.py <ITEM-KEY>
+python3 "${CLAUDE_SKILL_DIR}/scripts/check-spec.py" <ITEM-KEY>
 ```
 
 Against the key, not the file. The tracker converts the description into its own storage format on

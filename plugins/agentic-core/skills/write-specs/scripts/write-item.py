@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 .claude/skills/write-specs/scripts/write-item.py <draft-file> [--project <key>]
+# Run: python3 "${CLAUDE_PLUGIN_ROOT}/skills/write-specs/scripts/write-item.py" <draft-file> [--project <key>]
 """write-item.py <draft-file> [--project <key>]
 
 Write a checked draft to the tracker through the tracker role's contracted
@@ -115,12 +115,15 @@ def main(argv):
 
     if not os.path.isfile(draft):
         usage(f"draft not found: {draft}")
+    draft = os.path.abspath(draft)
 
     fields, _ = check_spec.parse_draft(draft)
     item_key = (fields.get("item_id") or "").strip()
 
+    project_root = check_spec.project_dir()
+    os.chdir(project_root)
     packs = check_spec.read_pack_names(CONFIG)
-    pack_root = check_spec.plugin_root(packs["tracker"], os.getcwd())
+    pack_root = check_spec.plugin_root(packs["tracker"], project_root)
     pack_yaml = os.path.join(pack_root, "pack.yaml")
     if not os.path.isfile(pack_yaml):
         check_spec.unreadable(f"'{pack_yaml}' not found")
