@@ -771,6 +771,64 @@ OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/onboarding-path-empty/pack.yam
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason says omit the key" "omit the key instead" "$OUT"
 
+echo "[accept] validator 25 — authoring_examples_path, a directory relative to the pack root (D132)"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-valid-authoring-examples/pack.yaml" 2>&1); ST=$?
+assert_exit "platform-valid-authoring-examples accepted (exit 0)" 0 $ST "$OUT"
+assert_contains "still reaches the trailing unexpected-content check" "valid: platform" "$OUT"
+M=$(with_branch_name platform-valid ae-alone 'authoring_examples_path: "authoring-examples/"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "as the only optional key, trailing slash, accepted" 0 $ST "$OUT"
+M=$(with_branch_name platform-valid ae-before-em 'authoring_examples_path: "examples/authoring"' "evidence_manifest: change-summary")
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "before evidence_manifest accepted" 0 $ST "$OUT"
+M=$(with_branch_name platform-valid-evidence-manifest ae-after-em 'authoring_examples_path: "authoring-examples"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "after evidence_manifest rejected (fixed order)" 1 $ST "$OUT"
+M=$(with_branch_name platform-valid ae-missing-dir 'authoring_examples_path: "no-such-directory"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "a directory the fixture does not ship still accepted (shape only)" 0 $ST "$OUT"
+
+echo "[reject] validator 25 — authoring_examples_path is absolute"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/authoring-examples-path-absolute/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the key" "authoring_examples_path" "$OUT"
+assert_contains "reason says absolute" "not absolute" "$OUT"
+
+echo "[reject] validator 25 — authoring_examples_path contains a '..' segment"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/authoring-examples-path-traversal/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the key" "authoring_examples_path" "$OUT"
+assert_contains "reason names the segment" "'..' path segment" "$OUT"
+
+echo "[reject] validator 25 — authoring_examples_path is not a string"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/platform-invalid/authoring-examples-path-not-string/pack.yaml" 2>&1); ST=$?
+assert_exit "a list rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the key" "authoring_examples_path" "$OUT"
+assert_contains "reason names the expected shape" "double-quoted" "$OUT"
+for bad in '42' 'true' 'authoring-examples' '{dir: authoring-examples}' '' '""'; do
+  M=$(with_branch_name platform-valid "ae-bad-$RANDOM" "authoring_examples_path: $bad")
+  OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+  assert_exit "authoring_examples_path: $bad rejected" 1 $ST "$OUT"
+  assert_contains "authoring_examples_path: $bad → names the key" "authoring_examples_path" "$OUT"
+done
+M=$(with_branch_name platform-valid ae-block "authoring_examples_path:" "  dir: authoring-examples")
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "a block mapping rejected" 1 $ST "$OUT"
+assert_contains "a block mapping → names the key" "authoring_examples_path" "$OUT"
+
+echo "[reject] validator 25 — authoring_examples_path on a provider pack"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/provider-invalid/authoring-examples-path/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the kind it belongs to" "authoring_examples_path belongs to a platform pack, not a provider pack" "$OUT"
+[[ "$OUT" != *"unexpected content"* ]]
+assert_exit "reason does not misdiagnose as unexpected content" 0 $? ""
+M=$(with_branch_name provider-valid ae-provider-early)
+# placed ahead of operations: — a provider pack carries it nowhere
+awk '{print} /^role: tracker$/{print "authoring_examples_path: \"authoring-examples\""}' "$M" > "$M.tmp" && mv "$M.tmp" "$M"
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "anywhere in a provider manifest rejected" 1 $ST "$OUT"
+assert_contains "anywhere → names the kind it belongs to" "belongs to a platform pack" "$OUT"
+
 echo "[reject] provider manifest omits an operation without declaring it unsupported"
 OUT=$(bash "$VALIDATOR" "$FIXDIR/provider-invalid/missing-operation/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"

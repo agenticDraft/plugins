@@ -19,7 +19,10 @@
 #     G500) — each, when present, must
 #     be a well-formed relative path: non-empty, not absolute, no `..`
 #     segment. Neither is checked for existence here; that is pre-flight's
-#     job at runtime, against a real project. A third optional key,
+#     job at runtime, against a real project. `authoring_examples_path`
+#     (D132), a directory relative to the pack root, is checked the same
+#     way, must be double-quoted, and is refused on a provider manifest; the
+#     core never learns what it holds. A third optional key,
 #     `evidence_manifest` (D86), when present, must name an artifact id this
 #     same pack registers in its own `artifacts:` list above. A last optional
 #     key, `branch_name` (D544, D129), declares `pattern` (a double-quoted
@@ -399,6 +402,19 @@ if [[ "$kind" == "platform" ]]; then
     cursor=$((cursor + 1))
   fi
 
+  # --- authoring_examples_path (validator 25, D132) -------------------------
+  # Optional. A directory relative to the pack root holding the work-item
+  # authoring examples the core's authoring skill reads from the configured
+  # platform pack. Shape only: the core never learns what the directory
+  # holds, so nothing here opens it or tests that it exists.
+  if [[ "${LINES[cursor]:-}" =~ ^authoring_examples_path:(.*)$ ]]; then
+    value="${BASH_REMATCH[1]# }"
+    [[ "$value" =~ ^\"(.*)\"$ ]] \
+      || fail "authoring_examples_path must be a double-quoted relative path, got '$value'"
+    validate_declared_path "authoring_examples_path" "${BASH_REMATCH[1]}"
+    cursor=$((cursor + 1))
+  fi
+
   # --- evidence_manifest (validator 16, D86) --------------------------------
   # Optional. When present, it must name an artifact id this same pack
   # registers above, in its own 'artifacts:' list — never an unregistered id,
@@ -543,6 +559,13 @@ if [[ "$kind" == "platform" ]]; then
 fi
 
 if [[ "$kind" == "provider" ]]; then
+  # `authoring_examples_path` is a platform key (validator 25, D132). Refused
+  # wherever it appears, before any positional check could misreport it.
+  for line in "${LINES[@]}"; do
+    [[ "$line" =~ ^authoring_examples_path: ]] \
+      && fail "authoring_examples_path belongs to a platform pack, not a provider pack"
+  done
+
   require_line '^role: (tracker|scm|design|browser)$' "'role: tracker|scm|design|browser'"
   role="$MATCH"
 

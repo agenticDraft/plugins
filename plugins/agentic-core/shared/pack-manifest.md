@@ -34,6 +34,7 @@ artifacts:
 onboarding_state_path: "<relative path>"   # optional
 audit_findings_path: "<relative path>"     # optional
 audit_digest_path: "<relative path>"       # optional
+authoring_examples_path: "<relative path>" # optional; a directory, relative to the pack root
 branch_name:                               # optional
   pattern: "<expression>"
 reference_docs: "<https url>"              # optional; last
@@ -73,7 +74,7 @@ Fixed per kind, in order.
   an empty `artifacts` list is present on every result envelope rather than omitted.
   `onboarding_state_path`, `audit_findings_path` (D80) and `audit_digest_path` (G500) are the
   exceptions to "all required" — all three optional, and a pack may declare any subset of them,
-  including none.
+  including none. So is `authoring_examples_path` (D132), which follows them.
 - **provider** — `kind`, `role`, `operations`, `unsupported`, `scripts`, `text_conventions` for
   the `tracker` role, `requires`, `session_tools`. The first four are required; `unsupported` may be
   empty (`[]`) but must be present. `scripts`, `text_conventions`, `requires` and `session_tools`
@@ -125,6 +126,13 @@ open class.
   file it judged hashed to when it judged it: one `<sha256>  <relative path>` line per file. The
   core never learns what any listed path is for; it re-hashes the paths the digest itself names,
   which is how a freshness check stays platform-neutral (D28). Declared here, read only at runtime.
+- `authoring_examples_path` (D132) — optional, platform packs only. A directory **relative to the
+  pack root** (not the project root) holding the work-item authoring examples the core's authoring
+  skill reads from the configured platform pack. Checked exactly as the three paths above: a
+  non-empty, double-quoted, relative path with no `..` segment. The core never learns what the
+  directory holds, so the validator does not open it or test that it exists. A pack that declares
+  none leaves the authoring skill with its neutral templates only. A provider manifest carrying it
+  is invalid.
 - `branch_name` (D544, D129) — optional. It declares the character rule a branch name must meet on
   this platform: `pattern`, a double-quoted extended regular expression the whole name must match,
   so anchor it. The length limit is not the pack's: it depends on the project, so it lives in the
@@ -269,6 +277,8 @@ digraph route {
 - A top-level key outside the fixed set for the manifest's `kind`, or a required key missing.
 - `onboarding_state_path`, `audit_findings_path` or `audit_digest_path` present but empty, absolute
   (a leading `/`), or containing a `..` path segment.
+- `authoring_examples_path` that is not a double-quoted string, is empty, absolute or contains a `..`
+  path segment, comes after `evidence_manifest`, or appears on a provider manifest.
 - `branch_name` with no `pattern`, with a `max_length` (the project config's, not the pack's), or
   with an unquoted, empty or non-compiling `pattern`.
 - `reference_docs` that is not one double-quoted `https` URL, or any key after it.
@@ -427,14 +437,18 @@ matching `skills/` directory.
 `fixtures/pack-manifest/platform-valid-onboarding/` is `platform-valid` with all three of
 `onboarding_state_path`, `audit_findings_path` and `audit_digest_path` declared — proof the optional
 keys coexist with an otherwise-conformant manifest, and in that order.
+`fixtures/pack-manifest/platform-valid-authoring-examples/` is that fixture with
+`authoring_examples_path` added after them.
 
 `fixtures/pack-manifest/platform-invalid/` holds one directory per rejection case:
 `unknown-stage-always-autonomous`, `unknown-stage-artifact-producer`, `dangling-skill`,
 `stage-not-isolated`, `unfilled-placeholder`, `stage-id-not-in-vocabulary`, `when-unknown-field`,
 `no-readiness-criteria`, `readiness-criteria-unknown-field`, `digraph-node-not-a-stage`,
 `digraph-missing-node`, `digraph-label-mismatch`, `onboarding-path-absolute`,
-`onboarding-path-traversal` and `onboarding-path-empty`. `fixtures/pack-manifest/provider-invalid/`
-holds `missing-operation`, `unknown-operation` and `dangling-skill`. `scripts`'s own rejection cases
+`onboarding-path-traversal`, `onboarding-path-empty`, `authoring-examples-path-absolute`,
+`authoring-examples-path-traversal` and `authoring-examples-path-not-string`.
+`fixtures/pack-manifest/provider-invalid/` holds `missing-operation`, `unknown-operation`,
+`dangling-skill` and `authoring-examples-path`. `scripts`'s own rejection cases
 (unknown operation, dangling script, present-but-empty) are inline in the validator's test suite,
 alongside the remaining shape errors that fit a single block.
 
