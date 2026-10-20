@@ -18,7 +18,7 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 {
   "extraKnownMarketplaces": {
     "agenticdraft": {
-      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "v0.2.3" }
+      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "v0.2.4" }
     }
   },
   "enabledPlugins": {
@@ -33,9 +33,76 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 ```
 
 - The key under `extraKnownMarketplaces`, the part after `@` in every `enabledPlugins` key, and the catalog's `name` (`agenticdraft`) must match exactly. A mismatch fails silently.
-- `ref` pins the marketplace to a tag, so a project does not move when `main` does. One tag pins the core and every pack together. `v0.2.3` is the newest tag at the time of writing; the list is at [github.com/agenticDraft/plugins/tags](https://github.com/agenticDraft/plugins/tags).
+- `ref` pins the marketplace to a tag, so a project does not move when `main` does. One tag pins the core and every pack together. `v0.2.4` is the newest tag at the time of writing; the list is at [github.com/agenticDraft/plugins/tags](https://github.com/agenticDraft/plugins/tags).
 - Leave a pack out of `enabledPlugins` only if the project does not use that role.
 - If `~/.claude/settings.json` also declares the `agenticdraft` marketplace with a different `ref`, the CLI refuses to move to another one. Make both files name the same tag.
+
+### Third-party plugins the project also uses
+
+The packs lean on plugins from other marketplaces, and the project that developed them used a few more while building. None of them is an `agenticdraft` plugin, so step 1's block does not turn them on.
+
+Plugins a pack needs:
+
+- `figma@claude-plugins-official` — the design tool's MCP server. `agentic-figma` calls it; without it the design stages stop.
+- `aem-edge-delivery-services@adobe-skills` — Adobe's skills for writing blocks, styles and scripts. Needed only next to `agentic-eds`.
+
+Plugins for working on the project:
+
+- `playwright@claude-plugins-official` — a browser MCP server, for looking at a page by hand. No pack calls it: `agentic-playwright` drives its own Chromium through the `playwright` library.
+- `skill-creator@claude-plugins-official` — creates and edits `SKILL.md` files and measures them.
+- `superpowers@claude-plugins-official` — brainstorming, planning, test-driven development and debugging workflows.
+- `github@claude-plugins-official` — GitHub's MCP server: issues, pull requests, reviews.
+- `code-review@claude-plugins-official` — reviews a pull request or the current diff.
+- `commit-commands@claude-plugins-official` — commit, push and open a pull request in one command.
+- `claude-md-management@claude-plugins-official` — audits and updates `CLAUDE.md` files.
+- `diagram-design@diagram-design` — draws architecture, flow and sequence diagrams as HTML/SVG.
+
+To commit them for every collaborator, use this as `.claude/settings.json` instead of step 1's block:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "agenticdraft": {
+      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "v0.2.4" }
+    },
+    "adobe-skills": {
+      "source": { "source": "github", "repo": "adobe/skills" }
+    },
+    "diagram-design": {
+      "source": { "source": "github", "repo": "cathrynlavery/diagram-design" }
+    }
+  },
+  "enabledPlugins": {
+    "agentic-core@agenticdraft": true,
+    "agentic-eds@agenticdraft": true,
+    "agentic-jira@agenticdraft": true,
+    "agentic-github@agenticdraft": true,
+    "agentic-figma@agenticdraft": true,
+    "agentic-playwright@agenticdraft": true,
+
+    "figma@claude-plugins-official": true,
+    "aem-edge-delivery-services@adobe-skills": true,
+
+    "playwright@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "diagram-design@diagram-design": true
+  }
+}
+```
+
+JSON allows no comments; the blank lines only group the three lists above. Delete a line for a plugin the project does not want.
+
+- `claude-plugins-official` is not declared under `extraKnownMarketplaces`. Claude Code adds Anthropic's official marketplace by itself the first time an interactive terminal session starts. On a machine that has never run one, such as a fresh CI runner, run `claude plugin marketplace add anthropics/claude-plugins-official` first.
+- `adobe-skills` and `diagram-design` are not pinned to a tag. Add a `ref` to each the same way as `agenticdraft` if the project must not move when they do.
+- Committing `enabledPlugins` turns a plugin on for collaborators but does not by itself download it to their machines. If a session reports a plugin as enabled but not installed, run `claude plugin install <name>@<marketplace> --scope project` once. See [Install and manage plugins](https://code.claude.com/docs/en/discover-plugins#choose-an-install-scope).
+- **The plugins here also load into headless route runs.** The runner reads the project's settings, and every plugin `enabledPlugins` turns on that is installed on the machine runs in the session next to the packs (`agentic-core/shared/runner/route-agent.mjs`, `plugin-sources.mjs`). Its startup log lists both sets. A plugin with a `SessionStart` hook, `superpowers` among them, adds its text to every route session. If a run behaves differently after you enable one, disable it for that run's settings first.
+
+To turn them on for yourself only, put the same `enabledPlugins` lines and the two extra marketplaces in `~/.claude/settings.json` instead, or run `/plugin install <name>@<marketplace>` and choose user scope.
 
 ## 2. Trust the folder, then start a second session
 
@@ -123,4 +190,4 @@ Then start a second session and paste the same prompt with "steps 3 to 5 only" i
 
 ## What this guide has not verified
 
-This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. The prompts in "Letting Claude follow this guide" have not been run. A step that needs something this page does not say is a defect in the page.
+This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. The prompts in "Letting Claude follow this guide" have not been run. The third-party plugin names were checked against each marketplace's catalog, but the combined `settings.json` block has not been installed in a fresh project, and no headless route run has been made with those plugins enabled. A step that needs something this page does not say is a defect in the page.
