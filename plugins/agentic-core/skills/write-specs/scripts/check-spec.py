@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Run: python3 .claude/skills/write-specs/scripts/check-spec.py <draft-file | ITEM-KEY>
+# Run: python3 "${CLAUDE_PLUGIN_ROOT}/skills/write-specs/scripts/check-spec.py" <draft-file | ITEM-KEY | --examples>
 """check-spec.py — Deterministic conformance check for a work-item draft, or for
 a work item already in the tracker. No model involved.
 
@@ -13,22 +13,31 @@ Two passes.
 
   form   House rules no contract covers: criterion ids numbered from 1, one
          assertion per criterion, the sections an item of this type must carry,
-         a summary that is a phrase rather than a sentence, and every component
-         directory written with its trailing slash. Which heading carries the
-         acceptance criteria and which carries the reproduction steps is read
-         from the tracker pack's own text_conventions, never hardcoded here.
+         and a summary that is a phrase rather than a sentence. Which heading
+         carries the acceptance criteria and which carries the reproduction
+         steps is read from the tracker pack's own text_conventions, never
+         hardcoded here. Every component path written without its trailing
+         slash is reported from the patterns in the platform pack's
+         <authoring_examples_path>/component-path.txt; a pack with no key or no
+         file leaves that rule not run, and the report says so.
 
 Usage:
   check-spec.py <path-to-draft.md>   — check a local draft
   check-spec.py <ITEM-KEY>           — fetch the item through the tracker pack
                                        and check what is really in it
+  check-spec.py --examples           — list the platform pack's worked drafts,
+                                       <authoring_examples_path>/*.md
+
+The project is $CLAUDE_PROJECT_DIR, else the git top level of the working
+directory, else the working directory.
 
 Draft format: a front-matter block (item_type, summary, and optionally item_id,
 labels and components) followed by the item's description as markdown.
 
 Exit codes:
   0 — every form rule holds and readiness would pass; "valid: write-specs (...)"
-      on stdout, with any review notes listed above it
+      on stdout, with any review notes listed above it; for --examples, one
+      "example: <path>" line per draft, or "examples: none — <reason>"
   1 — at least one form violation, or readiness would fail; one
       "invalid: <reason>" line per violation on stderr, then a count
   2 — usage error, or a pack, script or config file that cannot be read
@@ -51,7 +60,6 @@ AC_LINE_RE = re.compile(r"^AC-(\d+)\b[.)\s]*(.*)$")
 LIST_LINE_RE = re.compile(r"^\s*(?:[-*+•]|\d+[.)])\s+\S")
 HEADING_RE = re.compile(r"^##\s+(.+?)\s*$")
 SENTENCE_END_RE = re.compile(r"\.(?:\s|$)")
-BLOCK_NO_SLASH_RE = re.compile(r"\bblocks/[\w-]+(?![\w/-])")
 ITEM_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]*-\d+$")
 
 violations = []
@@ -109,8 +117,24 @@ def read_pack_names(config_path):
 
 # --- plugin roots --------------------------------------------------------------
 
-CORE_NAME = "agentic-core"
-REGISTRY = os.path.join(".ai", "run-context", "plugin-roots")
+# This script ships inside the core: its own root is three levels up, and the
+# core's library is reached from there. Every other plugin is asked of the
+# core's resolver.
+CORE_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "..", "..", ".."))
+CORE_LIB = os.path.join(CORE_ROOT, "shared", "lib")
+
+
+def project_dir():
+    """The project: $CLAUDE_PROJECT_DIR, else the git top level of the working
+    directory, else the working directory — the resolver's own default."""
+    env = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if env:
+        return os.path.abspath(env)
+    result = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                            capture_output=True, text=True)
+    top = result.stdout.strip()
+    return top if result.returncode == 0 and top else os.getcwd()
 
 
 def registry_project(start_dir):
@@ -123,27 +147,13 @@ def registry_project(start_dir):
     return os.path.dirname(common) if result.returncode == 0 and common else start_dir
 
 
-def core_resolver(project):
-    """The resolver's path. The core's own registry entry is read for this one
-    lookup only; every root, the core's included, is then asked of the resolver."""
-    entry = os.path.join(project, REGISTRY, CORE_NAME)
-    if not os.path.isfile(entry):
-        unreadable(f"not resolved: {CORE_NAME} — no registry entry at {entry}")
-    with open(entry, encoding="utf-8") as f:
-        root = f.readline().strip()
-    resolver = os.path.join(root, "shared", "lib", "resolve-plugin-root.sh")
-    if not os.path.isabs(root) or not os.path.isfile(resolver):
-        unreadable(f"refused: {CORE_NAME} — registry entry {entry} names '{root}', "
-                   f"which holds no resolver")
-    return resolver
-
-
 def plugin_root(name, start_dir):
     """The root of the plugin called <name>, as the core's resolver answers it.
     A non-zero answer stops the script with the resolver's own reason."""
     project = registry_project(start_dir)
     result = subprocess.run(
-        ["bash", core_resolver(project), name, "--project-dir", project],
+        ["bash", os.path.join(CORE_LIB, "resolve-plugin-root.sh"), name,
+         "--project-dir", project],
         capture_output=True, text=True)
     if result.returncode != 0:
         unreadable((result.stderr or "").strip() or f"not resolved: {name}")
@@ -177,6 +187,54 @@ def read_operation_skill(pack_yaml, operation):
             if m:
                 return m.group(1)
     unreadable(f"'{pack_yaml}' declares no '{operation}' operation")
+
+
+def read_examples_dir(platform_root):
+    """The platform pack's authoring_examples_path, as an absolute directory,
+    or None when the pack declares none."""
+    with open(os.path.join(platform_root, "pack.yaml"), encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r'^authoring_examples_path:\s*"(.*)"\s*$', line)
+            if m:
+                return os.path.join(platform_root, m.group(1))
+    return None
+
+
+def read_component_patterns(examples_dir):
+    """(patterns, reason): the compiled lines of component-path.txt, or None
+    with the reason the component-path rule is not run. A line that does not
+    compile stops the script: a rule that cannot run is not a rule that held."""
+    if examples_dir is None:
+        return None, "the platform pack declares no authoring_examples_path"
+    path = os.path.join(examples_dir, "component-path.txt")
+    if not os.path.isfile(path):
+        return None, f"no component-path.txt in {examples_dir}"
+    patterns = []
+    with open(path, encoding="utf-8") as f:
+        for number, line in enumerate(f, start=1):
+            line = line.rstrip("\n")
+            if not line.strip():
+                continue
+            try:
+                patterns.append(re.compile(line))
+            except re.error as e:
+                unreadable(f"{path}:{number} does not compile: {e}")
+    if not patterns:
+        return None, f"{path} holds no pattern"
+    return patterns, None
+
+
+def list_examples(examples_dir):
+    """The platform pack's worked drafts: <authoring_examples_path>/*.md."""
+    if examples_dir is None:
+        print("examples: none — the platform pack declares no authoring_examples_path")
+        return
+    found = sorted(n for n in os.listdir(examples_dir) if n.endswith(".md")) \
+        if os.path.isdir(examples_dir) else []
+    if not found:
+        print(f"examples: none — no *.md in {examples_dir}")
+    for name in found:
+        print(f"example: {os.path.join(examples_dir, name)}")
 
 
 def read_text_conventions(pack_yaml):
@@ -372,13 +430,16 @@ def check_one_criterion(label, text):
         note(f"{label} is {len(text.split())} words — confirm it is one assertion")
 
 
-def check_paths(text):
-    misses = sorted(set(BLOCK_NO_SLASH_RE.findall(text)))
+def check_paths(text, patterns, reason):
+    if patterns is None:
+        print(f"  not run: component-path rule — {reason}")
+        return
+    misses = sorted({m.group(0) for p in patterns for m in p.finditer(text)})
     for miss in misses:
         violation(f"'{miss}' has no trailing slash, so intake records no component "
                   f"for it — write '{miss}/'")
     if not misses:
-        ok("every component directory carries its trailing slash")
+        ok("every component path carries its trailing slash")
 
 
 # --- route pass --------------------------------------------------------------
@@ -395,22 +456,28 @@ def main():
         usage_error("expected exactly one argument — a draft path or an item key")
     target = sys.argv[1]
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
+    repo_root = project_dir()
     target_path = target if os.path.isabs(target) else os.path.abspath(target)
     os.chdir(repo_root)
 
     packs = read_pack_names(os.path.join(".ai", "project-config.yaml"))
     platform_root = plugin_root(packs["platform"], repo_root)
-    tracker_root = plugin_root(packs["tracker"], repo_root)
     platform_pack = os.path.join(platform_root, "pack.yaml")
+    if not os.path.isfile(platform_pack):
+        unreadable(f"'{platform_pack}' not found")
+    examples_dir = read_examples_dir(platform_root)
+    if target == "--examples":
+        list_examples(examples_dir)
+        sys.exit(0)
+    patterns, patterns_reason = read_component_patterns(examples_dir)
+    tracker_root = plugin_root(packs["tracker"], repo_root)
     tracker_pack = os.path.join(tracker_root, "pack.yaml")
     intake_skill = read_stage_skill(platform_pack, "intake")
     extractor = os.path.join(platform_root, "skills", intake_skill,
                              "scripts", "extract-fact-record.py")
     if not os.path.isfile(extractor):
         unreadable(f"'{extractor}' not found")
-    lib = os.path.join(plugin_root(CORE_NAME, repo_root), "shared", "lib")
+    lib = CORE_LIB
     conventions = read_text_conventions(tracker_pack)
 
     if os.path.isfile(target_path):
@@ -477,7 +544,7 @@ def main():
     check_summary(item["fields"]["summary"].strip())
     ac_hit = check_sections(headings, item["fields"]["issuetype"]["name"], conventions)
     check_criteria(lines, ac_hit)
-    check_paths(text)
+    check_paths(text, patterns, patterns_reason)
 
     for n in notes:
         print(f"  review: {n}")
