@@ -7,8 +7,9 @@
 # word lists, and writes the two artifacts intake's own contract requires
 # (fact-record.md, and the sanitized specification core contract SS4
 # names). It has no knowledge of any tracker beyond the shape it is handed:
-# item id/type/labels/components/description/attachments, and the three
-# text_conventions lists it is passed a path to.
+# item id/type/labels/description/attachments, and the three
+# text_conventions lists it is passed a path to. The item's components field
+# is never read: components are the existing blocks the text names.
 #
 # Exit codes: 0 on success (both artifacts written, one summary line on
 # stdout naming which literal-match fields matched, for the calling skill's
@@ -108,6 +109,7 @@ FILE_RE = re.compile(r"\b[\w./-]+\.(?:js|css|html|json|md)\b")
 # `files_named`'s own "matching blocks/<name>/..." fallback (eds-baseline,
 # eds-prototype, eds-verify) already assumes that root.
 BLOCK_DIR_RE = re.compile(r"\bblocks/[\w-]+/")
+BLOCK_NAME_RE = re.compile(r"^blocks/([\w-]+)/")
 FIGMA_HOSTS = ("figma.com", "www.figma.com")
 # The filenames an item uses to declare which attachment is the design
 # reference, matched whole and lowercased — the same list
@@ -191,6 +193,18 @@ def before_state_available(components):
     return True
 
 
+def existing_components(files_named):
+    """Each distinct <name> of a blocks/<name>/... path in files_named whose
+    blocks/<name>/ exists in the checkout, in files_named order. A block the
+    item creates does not exist yet, so it is not a component."""
+    components = []
+    for path in files_named:
+        m = BLOCK_NAME_RE.match(path)
+        if m and m.group(1) not in components and os.path.isdir(os.path.join("blocks", m.group(1))):
+            components.append(m.group(1))
+    return components
+
+
 def yaml_list(values):
     if not values:
         return "[]"
@@ -225,7 +239,6 @@ def main():
         fail("fetched item has no 'fields.issuetype.name' — cannot set item_type")
 
     labels = fields.get("labels") or []
-    components = [c.get("name") for c in (fields.get("components") or []) if c.get("name")]
     attachments = fields.get("attachment") or []
     summary = fields.get("summary") or ""
     description_adf = fields.get("description")
@@ -255,9 +268,9 @@ def main():
     has_reproduction_url = bool(URL_RE.search(plain_text))
     content_ok = reproduction_content_ok(plain_text, item_id)
     before_state_mentioned = bool(before_state_matches)
-    before_available = before_state_available(components)
-
     files_named = sorted(set(FILE_RE.findall(plain_text)) | set(BLOCK_DIR_RE.findall(plain_text)))
+    components = existing_components(files_named)
+    before_available = before_state_available(components)
 
     os.makedirs(os.path.dirname(out_fact_record) or ".", exist_ok=True)
     with open(out_fact_record, "w", encoding="utf-8") as f:

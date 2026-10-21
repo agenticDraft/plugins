@@ -52,7 +52,9 @@ case_() {
 
 REPRO='# Long button labels are cut off\n\n## Steps to reproduce\n\n1. Open https://main--aem-eds-ai-workflow-demo--agenticdraft.aem.page/buttons-test\n2. Make the window 375 px wide\n'
 
-case_ "declared components win" 0 "target=blocks names=accordion,cards" \
+case_ "every block in files_named, existing or new; components not read" 0 "target=blocks names=columns,quote" \
+  "[columns]" "[blocks/columns/, blocks/quote/]" "$REPRO"
+case_ "components alone names no block" 0 "target=page path=/buttons-test " \
   "[accordion, cards]" "[styles/styles.css]" "$REPRO"
 case_ "block folders in files_named, when no component" 0 "target=blocks names=table" \
   "[]" "[blocks/table/table.css, styles/styles.css]" "$REPRO"

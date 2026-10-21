@@ -2,9 +2,10 @@
 # resolve-verify-target.py <fact-record.yaml> <sanitized-spec.md> <tracker-pack.yaml> <preview-url>
 #
 # Deterministic. Decides what the verify stage points a browser at, in order:
-#   1. the fact record's `components`;
-#   2. every distinct <name> in `files_named` paths of the form blocks/<name>/...;
-#   3. the first URL under a heading the tracker pack lists in its
+#   1. every distinct <name> in `files_named` paths of the form blocks/<name>/...,
+#      a block the item creates included (`components` holds only the existing
+#      ones, so it is not read);
+#   2. the first URL under a heading the tracker pack lists in its
 #      text_conventions `reproduction_headings`, when its host is the local
 #      preview host or the platform's own delivery host (*.aem.page,
 #      *.aem.live). Only its path is kept: the page is rendered from the
@@ -84,11 +85,6 @@ def main():
         if not os.path.isfile(path):
             usage_error(f"'{path}' not found")
 
-    components = read_list(fact_record, "components")
-    if components:
-        print(f"target=blocks names={','.join(components)}")
-        return 0
-
     names = []
     for path in read_list(fact_record, "files_named"):
         m = re.match(r"^blocks/([\w-]+)/", path)
@@ -101,7 +97,7 @@ def main():
     headings = reproduction_headings(pack_yaml)
     url = first_reproduction_url(spec, headings) if headings else None
     if url is None:
-        print("target=none reason=no block in components or files_named, and no URL under a reproduction heading")
+        print("target=none reason=no block in files_named, and no URL under a reproduction heading")
         return 1
 
     host = url_host(url)
