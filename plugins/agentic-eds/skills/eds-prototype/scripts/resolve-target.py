@@ -4,25 +4,26 @@
 # resolve-target.py <fact-record.yaml> <question-answer.yaml>
 #
 # Deterministic (D526). Decides the block the prototype stage targets from
-# exactly one candidate, never from the order of a list. Three sources, in
+# exactly one candidate, never from the order of a list. Two sources, in
 # rank order; the first that yields any candidate decides alone:
 #
 #   answer       the answer stored under (prototype, target-block), read only
 #                through the core's read-question-answer.sh. Its candidates
 #                are every distinct <name> in a `blocks/<name>/` path in it;
 #                with none, the whole answer when it is one block name.
-#   components   the fact record's `components`, distinct.
 #   files_named  the distinct <name> of every `blocks/<name>/…` path in the
-#                fact record's `files_named`.
+#                fact record's `files_named`, a block the item creates
+#                included. `components` holds only the existing ones, so it
+#                is not read.
 #
 # Exactly one candidate resolves:
 #
 #   target=<name>
-#   source=<answer|components|files_named>
+#   source=<answer|files_named>
 #
 # Zero, or two or more, is a question — every candidate listed, sorted:
 #
-#   source=<answer|components|files_named|none>
+#   source=<answer|files_named|none>
 #   candidate=<name>        one line per candidate; none when source=none
 #
 # Exit codes: 0 — resolved; 4 — question; 1 — the answer file is malformed
@@ -80,7 +81,6 @@ def main(argv):
 
     sources = [
         ("answer", lambda: answer_candidates(qa_path)),
-        ("components", lambda: sorted(set(fact_list(fact, "components")))),
         ("files_named", lambda: sorted({m.group(1) for p in fact_list(fact, "files_named")
                                         if (m := BLOCK_PATH_RE.match(p))})),
     ]

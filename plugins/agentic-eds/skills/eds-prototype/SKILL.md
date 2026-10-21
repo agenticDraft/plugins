@@ -155,8 +155,8 @@ Its sources, in rank order — the first that yields any candidate decides alone
 1. the answer stored under `(prototype, target-block)`, read through the core's
    `read-question-answer.sh` — the key this stage's own target question is asked under
    (**Report question**); every other answer in the file is invisible to it;
-2. the fact record's `components`;
-3. the distinct `<name>` of every `blocks/<name>/…` path in `files_named`.
+2. the distinct `<name>` of every `blocks/<name>/…` path in `files_named`, a block the item creates
+   included.
 
 Never pick a block yourself from these fields, from the answer's free text, or from the
 specification: which block is targeted is the script's decision alone.

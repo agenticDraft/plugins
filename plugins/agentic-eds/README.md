@@ -53,6 +53,7 @@ intake ──→ readiness ──→ [extract] ──→ conventions ──→ s
 
 [extract], [prototype], [verify-design]   when design_source=true OR design_mentioned=true
 [baseline]                                when components=present
+                                          (an existing blocks/<name>/ the item's text names)
 ```
 
 Design-system onboarding is not on the route. `eds-adopt-design-system` writes the token set,
@@ -70,7 +71,7 @@ with no authored content.
 | `extract`       | `eds-extract`        | design source or design mentioned          |        | `design-reference.json`                             |
 | `conventions`   | `eds-conventions`    | always                                     |        | `design-conventions.md`                             |
 | `serve`         | `eds-serve`          | always                                     |        | `serve-report.md`                                   |
-| `baseline`      | `eds-baseline`       | components present                         |        | `baseline-capture.json`                             |
+| `baseline`      | `eds-baseline`       | the text names an existing block           |        | `baseline-capture.json`                             |
 | `prototype`     | `eds-prototype`      | design source or design mentioned          |        | `prototype-report.md`, `design-context-values.tsv`, `design-context-notes.txt` |
 | `verify-design` | `eds-verify-design`  | design source or design mentioned          | 2      | `verify-design-report.md`                           |
 | `plan`          | `eds-plan`           | always                                     | 1      | `plan.yaml`                                         |
