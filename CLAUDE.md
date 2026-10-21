@@ -178,8 +178,9 @@ example-project/                     # reference for project-scoped install via 
 ```
 
 `example-project/.claude/settings.json` demonstrates the `extraKnownMarketplaces` +
-`enabledPlugins` pattern for auto-installing a plugin for every collaborator who trusts the
-repo folder. The key in `extraKnownMarketplaces`, the part after `@` in `enabledPlugins`, and
+`enabledPlugins` pattern for enabling a plugin for every collaborator who trusts the repo
+folder. It does not install the plugin: each collaborator runs
+`claude plugin install <name>@agenticdraft --scope project` once. The key in `extraKnownMarketplaces`, the part after `@` in `enabledPlugins`, and
 `marketplace.json`'s `name` field must all match exactly, or the plugin silently fails to
 resolve.
 
