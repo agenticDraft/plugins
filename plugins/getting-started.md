@@ -18,7 +18,7 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 {
   "extraKnownMarketplaces": {
     "agenticdraft": {
-      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "v0.2.4" }
+      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "<newest tag>" }
     }
   },
   "enabledPlugins": {
@@ -33,7 +33,13 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 ```
 
 - The key under `extraKnownMarketplaces`, the part after `@` in every `enabledPlugins` key, and the catalog's `name` (`agenticdraft`) must match exactly. A mismatch fails silently.
-- `ref` pins the marketplace to a tag, so a project does not move when `main` does. One tag pins the core and every pack together. `v0.2.4` is the newest tag at the time of writing; the list is at [github.com/agenticDraft/plugins/tags](https://github.com/agenticDraft/plugins/tags).
+- `ref` pins the marketplace to a tag, so a project does not move when `main` does. One tag pins the core and every pack together. Put the newest tag in place of `<newest tag>`, here and in every block below. This command prints it:
+
+  ```sh
+  git ls-remote --tags --refs --sort=-v:refname https://github.com/agenticDraft/plugins 'v*' | head -1 | cut -d/ -f3
+  ```
+
+  The list is also at [github.com/agenticDraft/plugins/tags](https://github.com/agenticDraft/plugins/tags). This page names no tag itself, so it cannot point at an old one.
 - Leave a pack out of `enabledPlugins` only if the project does not use that role.
 - If `~/.claude/settings.json` also declares the `agenticdraft` marketplace with a different `ref`, the CLI refuses to move to another one. Make both files name the same tag.
 
@@ -63,7 +69,7 @@ To commit them for every collaborator, use this as `.claude/settings.json` inste
 {
   "extraKnownMarketplaces": {
     "agenticdraft": {
-      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "v0.2.4" }
+      "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "<newest tag>" }
     },
     "adobe-skills": {
       "source": { "source": "github", "repo": "adobe/skills" }
@@ -177,7 +183,7 @@ The runner starts nothing without them: it exits `3` when the policy is missing 
 
 ## Letting Claude follow this guide
 
-To have Claude do steps 1 and 2 for you, open Claude Code in the project and paste this into the first session, with the tag you want in place of `<tag>`:
+To have Claude do steps 1 and 2 for you, open Claude Code in the project and paste this into the first session, with the newest tag (step 1 says how to find it) in place of `<tag>`:
 
 ```text
 Follow https://github.com/agenticDraft/plugins/blob/<tag>/plugins/getting-started.md step by step in this project,
