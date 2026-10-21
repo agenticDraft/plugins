@@ -11,7 +11,6 @@ item_type: <the tracker's own name for this type>
 summary: <a phrase, not a sentence>
 item_id: <KEY-123>
 labels: [<label>, <label>]
-components: [<the tracker's own component name>]
 ---
 
 ## Description
@@ -42,9 +41,7 @@ AC-2 <one assertion>
 
 **The front matter is not part of the description.** It carries what the tracker holds in its own
 fields, so the checker can build an item shaped like a real one and run the real detectors over it.
-`item_type` and `summary` are always required; the rest are filled when they are known. `components`
-is the tracker's structured component field, which is not the same thing as a path mentioned in the
-description — some stage conditions read the field and ignore the prose.
+`item_type` and `summary` are always required; the rest are filled when they are known.
 
 **The summary is a phrase.** It is a label in a list of a hundred other labels, and a sentence there
 is a sentence nobody finishes reading. The requirement goes in the description, which is the part
@@ -105,10 +102,3 @@ inside one rule, not two rules: a run reports it as one result, and splitting it
 three criteria that always pass or fail together. The note exists because no pattern can tell that
 case from a genuine compound; deciding is the reader's job, and a note nobody read is the same as
 no note at all.
-
-Note also what the front matter of this example does *not* have: a `components` entry. Run the
-checker on it and the route half reports that the stage which captures a component's current state
-is skipped, because that condition reads the tracker's structured component field and this item
-leaves it empty. For a brand-new block that is correct — there is no before-state to capture. For a
-change to an existing one it is a silent loss, and the description naming the directory three times
-does not fix it. Fill the field.
