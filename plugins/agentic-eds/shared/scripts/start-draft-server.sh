@@ -18,6 +18,15 @@
 # normally still answering, and is reused. The pid file is written only when
 # this call launched the process itself.
 #
+# A server that answers is not yet this checkout's draft server: another
+# checkout's draft server answers on the same derived port just the same, and
+# the draft a stage renders would then be another checkout's file. So once
+# the origin answers — reused or started here — check-serves-checkout.sh
+# fetches a one-off file it writes into this checkout through that origin. A
+# server that does not return it exits 3, not 1: waiting or restarting does
+# not fix a port another checkout holds, and the four lines it prints end in
+# the summary the calling stage reports as is.
+#
 # Usage:
 #   start-draft-server.sh <preview-url> <log-path> <pid-path>
 #
@@ -30,6 +39,9 @@
 #       the command could not be started, or the poll ladder was exhausted;
 #       reason on stderr
 #   2 — usage error (a missing or empty argument)
+#   3 — something answers at the draft origin but does not serve this
+#       checkout; check-serves-checkout.sh's reason:, detail:, listener: and
+#       summary: lines on stderr
 
 set -uo pipefail
 
@@ -95,7 +107,17 @@ poll() {
   return 1
 }
 
+# Exit 0 when the draft origin serves this checkout; otherwise the check's
+# own lines go to stderr and the script exits 3.
+serves_checkout() {
+  local out
+  out=$(bash "$(dirname "${BASH_SOURCE[0]}")/check-serves-checkout.sh" "$ORIGIN" "$PWD" "$1" draft 2>&1) && return 0
+  printf '%s\n' "$out" >&2
+  exit 3
+}
+
 if poll "$ORIGIN"; then
+  serves_checkout no
   echo "ready: origin=$ORIGIN port=$DRAFT_PORT started=no pid=none log=none"
   exit 0
 fi
@@ -126,6 +148,7 @@ fi
 echo "$PID" >"$PID_PATH"
 
 if poll "$ORIGIN"; then
+  serves_checkout yes
   echo "ready: origin=$ORIGIN port=$DRAFT_PORT started=yes pid=$PID log=$LOG_PATH"
   exit 0
 fi

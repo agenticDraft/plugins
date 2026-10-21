@@ -276,7 +276,7 @@ A project installs it by the `settings.json` in the [getting-started guide](../g
 - **The preview server must serve this checkout.** `eds-serve` fetches a one-off file it writes
   under `.ai/run-context/` through the answering server and fails when the server does not return
   it — a server left running from another checkout is stopped by a human, never by the run. The
-  draft server is not checked this way.
+  draft server is checked the same way, on its derived port.
 - **The gates need a checkout of their own.** `eds-gate-reviewer` runs in a worktree, so the two
   gates are passed `project_root` and read tracked files only.
 - **The provider packs are named in the config, not here.** This pack works with whichever pack

@@ -72,7 +72,7 @@
       "displayName": "Agentic Edge Delivery",
       "source": "./plugins/agentic-eds",
       "description": "Platform pack for an Edge Delivery project: binds every stage of the default delivery route to the platform's own conventions.",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "category": "development",
       "tags": [
         "edge-delivery",

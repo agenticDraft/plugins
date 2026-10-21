@@ -61,6 +61,14 @@ answering, and is reused. Only starts a new one when nothing answered, and write
 then. Prints `ready: origin=<url> port=<n> started=yes|no pid=<pid|none> log=<path|none>` on
 success; the target URL every render/capture/measure call is built from is
 `<origin>/drafts/<name>` — `.plain.html` never appears in the URL, the pipeline resolves it.
+Once the draft origin answers — reused or started — the script runs
+`check-serves-checkout.sh <origin> <project root> <started here> draft`: it writes a one-off file
+under `.ai/run-context/`, fetches it through the origin and deletes it. Another checkout's draft
+server answers on the same derived port just the same, and would serve that checkout's drafts. A
+server that does not return the file exits `3` with the check's `reason:`, `detail:`, `listener:`
+and `summary:` lines on stderr; the calling stage ends `fail` with that `summary:` verbatim. Not
+transient: only freeing the port fixes it.
+
 Exit `1` is a TRANSIENT failure (core contract §8) — per **D89**, the calling stage raises
 `verdict: question` on exhaustion, naming the literal recovery command (`npm run up:draft`, or
 `commands.serve` with `--html-folder drafts` appended, whichever this project's own configuration
