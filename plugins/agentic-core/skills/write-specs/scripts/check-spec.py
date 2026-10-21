@@ -31,8 +31,8 @@ Usage:
 The project is $CLAUDE_PROJECT_DIR, else the git top level of the working
 directory, else the working directory.
 
-Draft format: a front-matter block (item_type, summary, and optionally item_id,
-labels and components) followed by the item's description as markdown.
+Draft format: a front-matter block (item_type, summary, and optionally item_id
+and labels) followed by the item's description as markdown.
 
 Exit codes:
   0 — every form rule holds and readiness would pass; "valid: write-specs (...)"
