@@ -224,11 +224,19 @@ Run, from the project root, with `dangerouslyDisableSandbox: true` on this call 
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/eds-serve/scripts/check-serves-checkout.sh \
-  <the preview URL> "$PWD"
+  <the preview URL> "$PWD" <yes when this stage started the server, no when it found it answering>
 ```
 
-Record its exit code and its output. The script writes `.ai/run-context/serve-probe.txt`, fetches
-it from the preview URL's origin, and deletes it again whatever the outcome.
+Record its exit code and its whole output. The script writes `.ai/run-context/serve-probe.txt`,
+fetches it from the preview URL's origin, and deletes it again whatever the outcome. On a failed
+check it prints four lines — `reason:`, `detail:`, `listener:` (the process id holding the port and
+its working directory, `unknown` where it could not tell) and `summary:`.
+
+**When this check fails, the run stops here, and the human sees nothing but this stage's summary** —
+the driver prints the envelope's `summary` and never the report. That is why the script, not this
+stage, writes the sentence: it already holds the origin, the process and the directory, it knows
+which remedy fits, and it keeps the sentence inside the envelope's 200 characters. Restating it
+would only lose a pid or a path the human needs to stop the right process.
 
 ### Serves this checkout?
 
@@ -239,8 +247,7 @@ it from the preview URL's origin, and deletes it again whatever the outcome.
   server, before a rerun can pass. A server this stage started itself and that fails this check
   serves another directory, which means the serve command does — a configuration error a rerun
   will repeat.
-- Exit `2` — the probe file could not be written. Go to **Report fail**, naming the script's stderr
-  reason.
+- Exit `2` — the probe file could not be written. Go to **Report fail**.
 
 ### Report fail
 
@@ -250,7 +257,8 @@ command configured?**, nothing was polled and nothing was started, so the report
 section. Otherwise it then carries, one field per line: the URL
 polled; the status that answered, or `none`; whether this stage started what is running; the
 process id, or `none`; the log path, or `none`; the poll output that ended the attempt; and the
-checkout check's output, or `none` when it did not run.
+checkout check's whole output — its `reason:`, `detail:`, `listener:` and `summary:` lines — or
+`none` when it did not run.
 
 Then write the envelope with the emitter, never by hand:
 
@@ -266,8 +274,9 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized summary fails validation and takes the whole run to `failed`) — either that no preview URL is configured; or that nothing answered and
   no serve command is configured; or that the serve command exited on startup; or that the preview
   never answered before the poll ladder was exhausted, naming that this one is a transient
-  failure; or that the server answering at the origin does not serve this checkout, naming whether
-  this stage started it. Never the serve command's raw output verbatim.
+  failure. Never the serve command's raw output verbatim. When this stage reached here from
+  **Serves this checkout?**, the summary is the text after `summary: ` in the checkout check's
+  output, verbatim — never reworded, shortened or merged with another reason.
 - `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): `.ai/run-context/serve-report.md`,
   plus `.ai/run-context/serve.log` when a command was started.
 - `next_action: none`
