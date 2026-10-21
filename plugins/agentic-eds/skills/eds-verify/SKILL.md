@@ -90,6 +90,7 @@ digraph eds_verify {
     "Start the dedicated draft server" -> "Draft server answering?";
     "Draft server answering?" -> "Render the target page" [label="yes"];
     "Draft server answering?" -> "Report question" [label="no"];
+    "Draft server answering?" -> "Report fail" [label="another checkout's server"];
     "Render the target page" -> "Page rendered?";
     "Page rendered?" -> "Capture and measure the rendered page" [label="pass/warn"];
     "Page rendered?" -> "Report fail" [label="fail/question/invalid envelope"];
@@ -270,7 +271,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/start-draft-server.sh \
   .ai/logs/draft-server.pid
 ```
 
-Record its exit code and its `ready:`/`no-answer:`/`start-failed:` line — the `origin=` field on
+Record its exit code and its `ready:`/`no-answer:`/`start-failed:` line, or on exit `3` its four
+`reason:`/`detail:`/`listener:`/`summary:` lines — the `origin=` field on
 success gives the base **Render the target page** builds its target URL from below. The draft
 server is normally already answering — started by `eds-verify-design` earlier in this route, or by
 an earlier run — and is then reused (`started=no`); the script starts one only when nothing
@@ -282,6 +284,12 @@ Exit `0` — continue to **Render the target page**. Exit `1` — go to **Report
 draft server never answered, a TRANSIENT failure (core contract §8) whose recovery is one concrete
 thing a human can do, not a code change — this stage's own retries are already exhausted by the
 script's own poll ladder, so there is nothing left to attempt before escalating.
+
+Exit `3` — something answers at the draft origin but does not serve this checkout: another
+checkout's draft server holds the derived port, so the draft this stage would render is not this
+run's. Go to **Report fail**, not **Report question**: waiting or restarting does not free a port
+another checkout holds, and the script's own `summary:` line already names the port, the process
+and the remedy.
 
 ### Render the target page
 
@@ -596,8 +604,8 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized
   summary fails validation and takes the whole run to `failed`), naming the specific reason —
   the missing operation(s), the unresolved target block, the missing renderable content, the
-  render operation's own failure summary verbatim, or the specific acceptance criterion that
-  failed. Never reworded into something more general; if naming everything runs past 200
+  render operation's own failure summary verbatim, the draft-server script's `summary:` line
+  verbatim on its exit `3`, or the specific acceptance criterion that failed. Never reworded into something more general; if naming everything runs past 200
   characters, keep the single most specific reason and drop the rest rather than compounding
   clauses with "and"/";" — the full detail already lives in `verify-report.md` and the
   `artifacts` list.
