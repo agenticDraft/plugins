@@ -16,7 +16,6 @@ item_type: <the tracker's own name for this type>
 summary: <a phrase, not a sentence>
 item_id: <KEY-123>
 labels: [<label>, <label>]
-components: [<the tracker's own component name>]
 ---
 
 ## Description

@@ -157,7 +157,7 @@ silently is the easiest mistake to make here.
 Gather, from the requester rather than from inference:
 
 - The outcome wanted, and why it is wanted.
-- The components or files involved, written the way they appear in the repository.
+- The component directories or files involved, written the way they appear in the repository.
 - Any copy, labels or content the item supplies, which goes in verbatim.
 - What is explicitly out of scope.
 - What would make someone agree the work is done.
@@ -213,7 +213,7 @@ Read every `example:` file it prints alongside the template. `examples: none` me
 none, and the template is the only model.
 
 The front matter carries the fields the tracker holds outside the description: the item's type and
-summary always, plus its key, labels and components where those are known. The body below it is the
+summary always, plus its key and labels where those are known. The body below it is the
 description exactly as it will appear in the tracker, headings and all.
 
 Two habits that matter more than they look:

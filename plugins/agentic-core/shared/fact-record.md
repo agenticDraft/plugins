@@ -36,7 +36,10 @@ before_state_available: true | false
 - `item_id` — non-empty string. Required.
 - `item_type` — verbatim from the tracker, not normalised. Required.
 - `labels` — the work item's labels/tags, verbatim. May be an empty list.
-- `components` — the work item's declared components, verbatim. May be an empty list.
+- `components` — the existing units the work item's text names: each unit in `files_named` that
+  already exists in the checkout at intake. The platform's intake extractor decides what a unit is
+  and fills this; it is never read from a tracker field. A unit the item creates is not in it. May
+  be an empty list.
 - `files_named` — paths the work item's text names, if any. May be an empty list.
 - `design_source` — whether a design reference is **present**, in any accepted form. `true` or
   `false`.
