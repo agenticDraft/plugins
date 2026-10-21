@@ -47,21 +47,10 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 
 The packs lean on plugins from other marketplaces, and the project that developed them used a few more while building. None of them is an `agenticdraft` plugin, so step 1's block does not turn them on.
 
-Plugins a pack needs:
+#### Plugins a pack needs: commit them
 
 - `figma@claude-plugins-official` — the design tool's MCP server. `agentic-figma` calls it; without it the design stages stop.
 - `aem-edge-delivery-services@adobe-skills` — Adobe's skills for writing blocks, styles and scripts. Needed only next to `agentic-eds`.
-
-Plugins for working on the project:
-
-- `playwright@claude-plugins-official` — a browser MCP server, for looking at a page by hand. No pack calls it: `agentic-playwright` drives its own Chromium through the `playwright` library.
-- `skill-creator@claude-plugins-official` — creates and edits `SKILL.md` files and measures them.
-- `superpowers@claude-plugins-official` — brainstorming, planning, test-driven development and debugging workflows.
-- `github@claude-plugins-official` — GitHub's MCP server: issues, pull requests, reviews.
-- `code-review@claude-plugins-official` — reviews a pull request or the current diff.
-- `commit-commands@claude-plugins-official` — commit, push and open a pull request in one command.
-- `claude-md-management@claude-plugins-official` — audits and updates `CLAUDE.md` files.
-- `diagram-design@diagram-design` — draws architecture, flow and sequence diagrams as HTML/SVG.
 
 To commit them for every collaborator, use this as `.claude/settings.json` instead of step 1's block:
 
@@ -72,10 +61,7 @@ To commit them for every collaborator, use this as `.claude/settings.json` inste
       "source": { "source": "github", "repo": "agenticDraft/plugins", "ref": "<newest tag>" }
     },
     "adobe-skills": {
-      "source": { "source": "github", "repo": "adobe/skills" }
-    },
-    "diagram-design": {
-      "source": { "source": "github", "repo": "cathrynlavery/diagram-design" }
+      "source": { "source": "github", "repo": "adobe/skills", "ref": "<adobe-skills tag>" }
     }
   },
   "enabledPlugins": {
@@ -87,49 +73,76 @@ To commit them for every collaborator, use this as `.claude/settings.json` inste
     "agentic-playwright@agenticdraft": true,
 
     "figma@claude-plugins-official": true,
-    "aem-edge-delivery-services@adobe-skills": true,
-
-    "playwright@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "github@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "diagram-design@diagram-design": true
+    "aem-edge-delivery-services@adobe-skills": true
   }
 }
 ```
 
-JSON allows no comments; the blank lines only group the three lists above. Delete a line for a plugin the project does not want.
+JSON allows no comments; the blank line only separates the packs from the plugins they need. Delete `aem-edge-delivery-services` if the project does not use `agentic-eds`, and its marketplace with it.
 
+- **Every marketplace in a committed file carries a `ref`.** A committed file reaches every collaborator and every headless run, so an unpinned marketplace puts its default branch into all of them. A marketplace source takes a branch or a tag in `ref`, not a commit.
+- `<adobe-skills tag>`: `adobe/skills` tags each of its components separately, and a tag of any of them fixes the whole repository, catalog included. Use the newest one on [github.com/adobe/skills/tags](https://github.com/adobe/skills/tags), and move it by hand when the project wants a newer one.
 - `claude-plugins-official` is not declared under `extraKnownMarketplaces`. Claude Code adds Anthropic's official marketplace by itself the first time an interactive terminal session starts. On a machine that has never run one, such as a fresh CI runner, run `claude plugin marketplace add anthropics/claude-plugins-official` first.
-- `adobe-skills` and `diagram-design` are not pinned to a tag. Add a `ref` to each the same way as `agenticdraft` if the project must not move when they do.
-- Committing `enabledPlugins` turns a plugin on for collaborators but does not by itself download it to their machines. If a session reports a plugin as enabled but not installed, run `claude plugin install <name>@<marketplace> --scope project` once. See [Install and manage plugins](https://code.claude.com/docs/en/discover-plugins#choose-an-install-scope).
-- **The plugins here also load into headless route runs.** The runner reads the project's settings, and every plugin `enabledPlugins` turns on that is installed on the machine runs in the session next to the packs (`agentic-core/shared/runner/route-agent.mjs`, `plugin-sources.mjs`). Its startup log lists both sets. A plugin with a `SessionStart` hook, `superpowers` among them, adds its text to every route session. If a run behaves differently after you enable one, disable it for that run's settings first.
+- Step 2's install applies to these two as well: `claude plugin install figma@claude-plugins-official --scope project` and `claude plugin install aem-edge-delivery-services@adobe-skills --scope project`.
+- **The plugins here also load into headless route runs.** The runner reads the project's settings, and every plugin `enabledPlugins` turns on that is installed on the machine runs in the session next to the packs (`agentic-core/shared/runner/route-agent.mjs`, `plugin-sources.mjs`). Its startup log lists both sets. A plugin with a `SessionStart` hook adds its text to every route session. If a run behaves differently after you enable one, disable it for that run's settings first.
 
-To turn them on for yourself only, put the same `enabledPlugins` lines and the two extra marketplaces in `~/.claude/settings.json` instead, or run `/plugin install <name>@<marketplace>` and choose user scope.
+#### Plugins for working on the project: install them for yourself
 
-## 2. Trust the folder, then start a second session
+- `playwright@claude-plugins-official` — a browser MCP server, for looking at a page by hand. No pack calls it: `agentic-playwright` drives its own Chromium through the `playwright` library.
+- `skill-creator@claude-plugins-official` — creates and edits `SKILL.md` files and measures them.
+- `superpowers@claude-plugins-official` — brainstorming, planning, test-driven development and debugging workflows. It has a `SessionStart` hook.
+- `github@claude-plugins-official` — GitHub's MCP server: issues, pull requests, reviews.
+- `code-review@claude-plugins-official` — reviews a pull request or the current diff.
+- `commit-commands@claude-plugins-official` — commit, push and open a pull request in one command.
+- `claude-md-management@claude-plugins-official` — audits and updates `CLAUDE.md` files.
+- `diagram-design@diagram-design` — draws architecture, flow and sequence diagrams as HTML/SVG. Its marketplace (`cathrynlavery/diagram-design`) has no tags, so it cannot be pinned and stays out of the committed file.
 
-Open Claude Code in the project and accept the trust prompt for the folder. Project settings declare a marketplace and plugins, and Claude Code applies them only for a trusted folder. On the first session after the trust, Claude Code fetches the marketplace and installs the declared plugins in the background; start a new session if they are not listed yet.
+None of them is needed by a pack, so they stay out of the committed file and install at user scope, on your machine only. Run in your shell:
 
-**The first session of a fresh project does not run the plugins' hooks.** Each plugin's `SessionStart` hook writes its root into `.ai/run-context/plugin-roots/`, and the core finds other plugins through that folder. After the first session it is empty, so run `/agentic-core:setup` from the second session on.
-
-To install by hand instead:
-
-```text
-/plugin marketplace add agenticDraft/plugins
-/plugin install agentic-core@agenticdraft
+```sh
+claude plugin marketplace add cathrynlavery/diagram-design
+claude plugin install diagram-design@diagram-design
+claude plugin install playwright@claude-plugins-official
 ```
 
-and the same for each other pack.
+and the same `claude plugin install` line for each other plugin you want. With no `--scope`, `install` writes to user scope (`~/.claude/settings.json`). A user-scope plugin also loads into a headless route run on that machine if the runner's settings enable it; the bullet above applies.
+
+## 2. Trust the folder and install the packs
+
+Open Claude Code in the project and accept the trust prompt for the folder. Project settings declare a marketplace and plugins, and Claude Code applies them only for a trusted folder.
+
+Committing `enabledPlugins` turns the packs on but does not install them on anyone's machine ([Install and manage plugins](https://code.claude.com/docs/en/discover-plugins#choose-an-install-scope)). On a machine that already knows the `agenticdraft` marketplace, the session starts with every pack reported `Plugin "agentic-<pack>" not cached at …` in the `/plugin` **Errors** tab, and no `.ai/` folder is written. So each collaborator runs this once, in a shell at the project root:
+
+```sh
+claude plugin install agentic-core@agenticdraft --scope project
+claude plugin install agentic-eds@agenticdraft --scope project
+claude plugin install agentic-jira@agenticdraft --scope project
+claude plugin install agentic-github@agenticdraft --scope project
+claude plugin install agentic-figma@agenticdraft --scope project
+claude plugin install agentic-playwright@agenticdraft --scope project
+```
+
+Run one line per pack the settings enable. Each prints `Successfully installed plugin: agentic-<pack>@agenticdraft (scope: project)`.
+
+Check that it worked: every pack has a record whose `projectPath` is this project.
+
+```sh
+claude plugin list --json | jq -r --arg p "$(pwd -P)" '.[] | select(.projectPath == $p) | .id'
+```
+
+prints one `agentic-<pack>@agenticdraft` line per pack. A record for the same pack with another `projectPath` belongs to another project and does not count. Without `jq`, read the `id`, `scope` and `projectPath` fields in `claude plugin list --json` by eye.
+
+`install --scope project` also rewrites `.claude/settings.json`: it reorders the keys and reformats the file, and the content stays the same. Commit the result or restore the file; either is fine.
+
+**Then start a new session.** Each pack's `SessionStart` hook writes its root into `.ai/run-context/plugin-roots/`, and the core finds the other packs through that folder. In the first session after the install, `ls .ai/run-context/plugin-roots/` lists one file per pack. Run `/agentic-core:setup` from that session on.
+
+In a running session, `/plugin install agentic-core@agenticdraft` does the same as the shell command: it opens the plugin's details, and you choose project scope there.
 
 ## 3. Give the provider packs what they need
 
 - `agentic-jira`: the environment variables `JIRA_SITE`, `JIRA_EMAIL` and `JIRA_API_TOKEN`. The route also calls the Jira site's own hostname (`<site>.atlassian.net`); if the sandbox blocks it, add that host to `sandbox.network.allowedDomains`.
 - `agentic-github`: `gh` installed and authenticated (`gh auth status`). If a stage reports an authentication failure, set `GH_TOKEN` to a fine-grained personal access token scoped to the one repository; the scopes are in the [`agentic-github` README](agentic-github/README.md).
-- `agentic-figma`: the Figma plugin installed and signed in (OAuth) in the same session. Install it once with `claude plugin install figma@claude-plugins-official`, then complete its OAuth sign-in in a session (the plugin's own `authenticate` tool opens a browser link).
+- `agentic-figma`: the Figma plugin installed and signed in (OAuth) in the same session. Install it as step 1's "Plugins a pack needs" says, then complete its OAuth sign-in in a session (the plugin's own `authenticate` tool opens a browser link).
 - `agentic-playwright`: the playwright library and a headless Chromium on the machine. Its [README](agentic-playwright/README.md) gives the exact commands.
 
 Keep tokens in an untracked file such as `.claude/settings.local.json`, in its `env` block, never in a committed one:
@@ -196,4 +209,8 @@ Then start a second session and paste the same prompt with "steps 3 to 5 only" i
 
 ## What this guide has not verified
 
-This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. The prompts in "Letting Claude follow this guide" have not been run. The third-party plugin names were checked against each marketplace's catalog, but the combined `settings.json` block has not been installed in a fresh project, and no headless route run has been made with those plugins enabled. A step that needs something this page does not say is a defect in the page.
+This guide was written from the plugins' own READMEs and from the settings form measured in a spike (`extraKnownMarketplaces` with a `ref`, then `enabledPlugins`). Three statements come from the project that developed the plugins and were not re-checked here: the Jira hostname allowlist, the need for `GH_TOKEN` in a sandboxed stage, and the Figma install and sign-in steps. A run from a project that did not build the plugins, following only this page, has not been made yet. The prompts in "Letting Claude follow this guide" have not been run.
+
+Step 2 was measured on a machine that already knew the `agenticdraft` marketplace, in a new project holding step 1's block: before the install the session reported all six packs `not cached`, and no pack record had that project as `projectPath`. After the six `install --scope project` lines there were six such records, and the next session's hooks wrote six roots into `.ai/run-context/plugin-roots/`, each pointing at a directory that exists. Not measured: a machine that has never added the marketplace. The docs say a trusted session clones a declared marketplace the machine lacks; run the install lines after that session either way.
+
+The third-party plugin names were checked against each marketplace's catalog. Not measured: the committed block with the `adobe-skills` `ref`; whether a `~/.claude/settings.json` that declares `adobe-skills` without that `ref` conflicts with it, as step 1 says happens for `agenticdraft`; the user-scope install lines; and a headless route run with those plugins enabled. A step that needs something this page does not say is a defect in the page.
