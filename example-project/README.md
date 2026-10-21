@@ -30,9 +30,13 @@ The key in `extraKnownMarketplaces` (①) and the part after `@` in `enabledPlug
 the same string, and it must match the `name` field in the marketplace's `marketplace.json`.
 If they don't match, the plugin silently fails to resolve.
 
-Open this directory in Claude Code, trust the folder when prompted, and the plugin installs
-itself. Because these settings are committed, every teammate who opens the repo gets the same
-setup.
+Open this directory in Claude Code and trust the folder when prompted. Committed settings turn
+the plugin on for every teammate but do not install it on their machines, so each teammate runs
+this once in the directory:
+
+```bash
+claude plugin install no-hallucinations@agenticdraft --scope project
+```
 
 ## Verify it's working
 

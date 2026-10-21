@@ -151,7 +151,7 @@ To enable a plugin for one repository, and for everyone who opens it, commit a `
 
 - **A route needs every pack its config names.** The core ships no stage and no operation. An unloaded pack is reported as a contract violation, not worked around.
 - **A run from a project that did not build the plugins has not been made yet.** The tests pass from installed copies; the guide has been written, not followed end to end by someone starting from nothing.
-- **A fresh project's first session starts without the plugins' hooks,** so the plugin-root registry is empty until the second session. [The guide](getting-started.md) says when to run `setup`.
+- **Committing the settings does not install the packs.** Each collaborator runs `claude plugin install <pack>@agenticdraft --scope project` once per pack; the plugin-root registry is written by the first session after that. [The guide](getting-started.md)'s step 2 has the commands and the check.
 - **`setup` does not choose the browser pack.** Set `packs.browser` by hand.
 - **Pre-flight reads declarations only.** A tool missing from the machine is found by `health` or by the operation that needs it, not before the run starts.
 - **A hook adds text as conversation context.** A global `CLAUDE.md` goes into the system instructions. The docs do not say the two carry equal weight, and it has not been measured. That is why `no-hallucinations` repeats a reminder on every prompt.
