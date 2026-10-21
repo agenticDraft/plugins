@@ -1,5 +1,5 @@
 ---
-description: The serve stage (core contract §4) — always runs. First runs the draft cleanup, which deletes the drafts of items whose change is merged or closed and stops the draft server once no recorded change is open. Then polls the project's configured preview URL first and starts the project's configured serve command only when nothing answers, then polls again on a fixed backoff ladder. Leaves a server answering for every later stage that needs a rendered page. A preview that never answers is a transient failure, reported with the serve command's own log named rather than returned unchanged.
+description: The serve stage (core contract §4) — always runs. First runs the draft cleanup, which deletes the drafts of items whose change is merged or closed and stops the draft server once no recorded change is open. Then polls the project's configured preview URL first and starts the project's configured serve command only when nothing answers, then polls again on a fixed backoff ladder. Then checks that the answering server serves this checkout, not another directory. Leaves this checkout's server answering for every later stage that needs a rendered page. A preview that never answers is a transient failure, reported with the serve command's own log named rather than returned unchanged.
 context: fork
 ---
 
@@ -32,10 +32,10 @@ after a first sandboxed attempt fails, and not left to judgment in the moment.**
 attempt does not give a different, more informative failure than a first unsandboxed one would;
 it only spends a poll ladder's worth of time (and, at the exit-code level, is indistinguishable
 from nothing genuinely listening — see **Poll the preview URL**, below) confirming a fact this
-section already states as certain. This is scoped narrowly: only this stage's own three commands
-(`clean-drafts.sh`, `poll-preview.sh`, `start-serve.sh`) — the first because the scm script it runs
-reaches the provider over the network and stops a process started outside the sandbox, the other
-two to reach `localhost`. No broader sandbox change, and no change to any other stage's own tool
+section already states as certain. This is scoped narrowly: only this stage's own four commands
+(`clean-drafts.sh`, `poll-preview.sh`, `start-serve.sh`, `check-serves-checkout.sh`) — the first
+because the scm script it runs reaches the provider over the network and stops a process started
+outside the sandbox, the other three to reach `localhost`. No broader sandbox change, and no change to any other stage's own tool
 calls.
 
 ## Clean up before anything else
@@ -52,6 +52,16 @@ run of this same stage, or started by a human — and starting a second one agai
 produces a process that dies on startup while the poll still succeeds against the first. The
 stage would then report success for a server it did not start and write a log nobody reads. Poll
 first, and that case resolves into what it actually is: already up, nothing to do.
+
+## An answer is not yet this checkout's server
+
+A poll says that something is bound to the origin, not what it serves. A server left running from
+another checkout, another worktree or another project answers exactly the same way, and every later
+stage would then render, capture and measure code this run never wrote — a baseline of unknown code
+and a verify that passes or fails against it, with nothing in either report to say so. So whichever
+way the origin came to answer, already up or started here, this stage then asks the server for a
+one-off file it has just written into this checkout. Only a server whose project directory is this
+checkout can return it, and it serves this checkout's files as they are on disk now.
 
 ## What this stage leaves behind, and what nothing cleans up
 
@@ -79,6 +89,8 @@ digraph eds_serve {
     "Serve command started?" [shape=diamond];
     "Poll the preview URL again" [shape=box];
     "Answered before the ladder was exhausted?" [shape=diamond];
+    "Check the server serves this checkout" [shape=box];
+    "Serves this checkout?" [shape=diamond];
     "Report fail" [shape=doublecircle];
     "Report pass" [shape=doublecircle];
 
@@ -87,7 +99,7 @@ digraph eds_serve {
     "Preview URL configured?" -> "Poll the preview URL" [label="non-empty"];
     "Preview URL configured?" -> "Report fail" [label="empty"];
     "Poll the preview URL" -> "Already answering?";
-    "Already answering?" -> "Report pass" [label="exit 0"];
+    "Already answering?" -> "Check the server serves this checkout" [label="exit 0"];
     "Already answering?" -> "Serve command configured?" [label="exit 1"];
     "Serve command configured?" -> "Start the serve command" [label="non-empty"];
     "Serve command configured?" -> "Report fail" [label="empty"];
@@ -95,8 +107,11 @@ digraph eds_serve {
     "Serve command started?" -> "Poll the preview URL again" [label="exit 0"];
     "Serve command started?" -> "Report fail" [label="exit 1"];
     "Poll the preview URL again" -> "Answered before the ladder was exhausted?";
-    "Answered before the ladder was exhausted?" -> "Report pass" [label="exit 0"];
+    "Answered before the ladder was exhausted?" -> "Check the server serves this checkout" [label="exit 0"];
     "Answered before the ladder was exhausted?" -> "Report fail" [label="exit 1"];
+    "Check the server serves this checkout" -> "Serves this checkout?";
+    "Serves this checkout?" -> "Report pass" [label="exit 0"];
+    "Serves this checkout?" -> "Report fail" [label="exit 1 or 2"];
 }
 ```
 
@@ -152,8 +167,8 @@ on the server.
 
 ### Already answering?
 
-- Exit `0` — something is already answering. Go to **Report pass**. Nothing is started, and the
-  report records that this stage did not start what is running.
+- Exit `0` — something is already answering. Go to **Check the server serves this checkout**.
+  Nothing is started, and the report records that this stage did not start what is running.
 - Exit `1` — nothing answered. Continue to **Serve command configured?**.
 
 ### Serve command configured?
@@ -197,10 +212,42 @@ this stage adds no retry of its own around it.
 
 ### Answered before the ladder was exhausted?
 
-- Exit `0` — the server came up. Go to **Report pass**.
+- Exit `0` — the server came up. Go to **Check the server serves this checkout**.
 - Exit `1` — the ladder was exhausted with nothing answering. Go to **Report fail**. The process
   was started and may still be running, so the report still records its process id and log — a
   server that is running but not answering is exactly the case a human needs the log for.
+
+### Check the server serves this checkout
+
+Run, from the project root, with `dangerouslyDisableSandbox: true` on this call — same reason as
+**Poll the preview URL**, above:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/eds-serve/scripts/check-serves-checkout.sh \
+  <the preview URL> "$PWD" <yes when this stage started the server, no when it found it answering>
+```
+
+Record its exit code and its whole output. The script writes `.ai/run-context/serve-probe.txt`,
+fetches it from the preview URL's origin, and deletes it again whatever the outcome. On a failed
+check it prints four lines — `reason:`, `detail:`, `listener:` (the process id holding the port and
+its working directory, `unknown` where it could not tell) and `summary:`.
+
+**When this check fails, the run stops here, and the human sees nothing but this stage's summary** —
+the driver prints the envelope's `summary` and never the report. That is why the script, not this
+stage, writes the sentence: it already holds the origin, the process and the directory, it knows
+which remedy fits, and it keeps the sentence inside the envelope's 200 characters. Restating it
+would only lose a pid or a path the human needs to stop the right process.
+
+### Serves this checkout?
+
+- Exit `0` — the server returned this run's nonce. Go to **Report pass**.
+- Exit `1` — it did not. Go to **Report fail**. Do not stop the server and do not start a second
+  one: a server this stage did not start is not this stage's to end, and a second one could not
+  bind the port it holds. A human has to stop it, or point `paths.preview` at this checkout's own
+  server, before a rerun can pass. A server this stage started itself and that fails this check
+  serves another directory, which means the serve command does — a configuration error a rerun
+  will repeat.
+- Exit `2` — the probe file could not be written. Go to **Report fail**.
 
 ### Report fail
 
@@ -209,7 +256,9 @@ Write `.ai/run-context/serve-report.md`. It carries the cleanup's whole output u
 command configured?**, nothing was polled and nothing was started, so the report carries only that
 section. Otherwise it then carries, one field per line: the URL
 polled; the status that answered, or `none`; whether this stage started what is running; the
-process id, or `none`; the log path, or `none`; and the poll output that ended the attempt.
+process id, or `none`; the log path, or `none`; the poll output that ended the attempt; and the
+checkout check's whole output — its `reason:`, `detail:`, `listener:` and `summary:` lines — or
+`none` when it did not run.
 
 Then write the envelope with the emitter, never by hand:
 
@@ -224,8 +273,10 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
 - `verdict: fail`
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized summary fails validation and takes the whole run to `failed`) — either that no preview URL is configured; or that nothing answered and
   no serve command is configured; or that the serve command exited on startup; or that the preview
-  never answered before the poll ladder was exhausted, naming that this last one is a transient
-  failure. Never the serve command's raw output verbatim.
+  never answered before the poll ladder was exhausted, naming that this one is a transient
+  failure. Never the serve command's raw output verbatim. When this stage reached here from
+  **Serves this checkout?**, the summary is the text after `summary: ` in the checkout check's
+  output, verbatim — never reworded, shortened or merged with another reason.
 - `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): `.ai/run-context/serve-report.md`,
   plus `.ai/run-context/serve.log` when a command was started.
 - `next_action: none`
@@ -250,7 +301,7 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
 
 - `verdict: pass`
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized summary fails validation and takes the whole run to `failed`) naming the answering status and whether this stage started the server or
-  found it already answering.
+  found it already answering, and that it serves this checkout.
 - `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): `.ai/run-context/serve-report.md`, plus `.ai/run-context/serve.log` when a command
   was started.
 - `next_action: none`
