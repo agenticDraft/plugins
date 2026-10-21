@@ -34,7 +34,7 @@ this stage writes with the emitter.
 ## Input
 
 None. This stage reads four fixed paths: `.ai/project-config.yaml` (for `packs.browser`,
-`packs.tracker` and `paths.preview`), `.ai/run-context/fact-record.yaml` (for `components`,
+`packs.tracker` and `paths.preview`), `.ai/run-context/fact-record.yaml` (for
 `files_named`, `design_source`, `design_mentioned`), `.ai/run-context/sanitized-spec.md` (only
 through the target script below), and `.ai/run-context/plan.yaml` when present (for its requirements and any
 per-step `# verification:` note). It does not receive a file list from `implement` directly — the
@@ -182,8 +182,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/eds-verify/scripts/resolve-verify-target.py
 
 The script alone decides the target; do not second-guess it. It prints one line:
 
-- `target=blocks names=<a,b>` (exit `0`) — the fact record's `components`, else every distinct
-  `<name>` in a `files_named` path `blocks/<name>/…`. Continue to **Locate existing content for the
+- `target=blocks names=<a,b>` (exit `0`) — every distinct `<name>` in a `files_named` path
+  `blocks/<name>/…`, a block the item creates included. Continue to **Locate existing content for the
   block** with those names.
 - `target=page path=<path> source=<url>` (exit `0`) — no block was named, and the item's
   reproduction steps name a page on this project's own hosts. A change outside any block (a
