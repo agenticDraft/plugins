@@ -223,7 +223,7 @@ Run, from the project root, with `dangerouslyDisableSandbox: true` on this call 
 **Poll the preview URL**, above:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/eds-serve/scripts/check-serves-checkout.sh \
+bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/check-serves-checkout.sh \
   <the preview URL> "$PWD" <yes when this stage started the server, no when it found it answering>
 ```
 
