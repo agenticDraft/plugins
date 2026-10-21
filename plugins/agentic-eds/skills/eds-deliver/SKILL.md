@@ -386,8 +386,8 @@ Capture its entire output and read the captured envelope's `verdict`.
      [--block-name <the target block>] [--pr-type <the type kept in Publish the change>]
    ```
 
-   `--block-name` is `fact-record.yaml`'s first `components` entry when non-empty, otherwise the
-   `<name>` in `files_named` matching `blocks/<name>/…`; omit it when neither names one. The script
+   `--block-name` is the first `<name>` in `fact-record.yaml`'s `files_named` matching
+   `blocks/<name>/…`; omit it when none does. The script
    prints a short note: the pull request, the same **Verified locally** block the pull request body
    carries, an **Action needed** list, and a pointer to `delivery-report.md`. It decides what needs a
    person by the gap's own prefix, not by judgement: a `content-asset gap` entry, the

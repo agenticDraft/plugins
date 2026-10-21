@@ -5,8 +5,8 @@
 # text names without a specific file inside it — the shape a plain FILE_RE
 # extension match can never catch (see G83).
 #
-# Not full coverage of the script's every field; this covers only the
-# files_named change, which had zero test coverage before this fix.
+# Later sections cover reproduction_content_ok, before_state_*, components and
+# design_source; not every field is covered.
 #
 # Usage:
 #   bash extract-fact-record.test.sh
@@ -135,7 +135,7 @@ item = {
 json.dump(item, open(sys.argv[4], 'w'))
 " "$key" "$components" "$description_text" "$PROJECT/item.json"
   (cd "$PROJECT" && python3 "$SCRIPT" item.json "$PACK_YAML" fact-record.yaml spec.md >/dev/null 2>&1)
-  grep -E '^(reproduction_content_ok|before_state_mentioned|before_state_available):' "$PROJECT/fact-record.yaml" | tr '\n' ' '
+  grep -E '^(components|reproduction_content_ok|before_state_mentioned|before_state_available):' "$PROJECT/fact-record.yaml" | tr '\n' ' '
 }
 
 echo "=== reproduction_content_ok / before_state_* tests ==="
@@ -152,17 +152,42 @@ check "another item's draft -> not ok" "reproduction_content_ok: false" "$OUT"
 OUT="$(field_case "a remote URL and a proxied local page" ITEM-2 table "See https://example.test/page and http://localhost:3000/about")"
 check "no draft URL -> ok, nothing probed" "reproduction_content_ok: true" "$OUT"
 
-OUT="$(field_case "a before-state phrase, component only in drafts/" ITEM-1 table "AC-2 The data rows render the same as before the change.")"
+mkdir -p "$PROJECT/blocks/table"
+OUT="$(field_case "a before-state phrase, component only in drafts/" ITEM-1 "" "AC-2 The data rows in blocks/table/ render the same as before the change.")"
 check "phrase matched" "before_state_mentioned: true" "$OUT"
 check "drafts/ is never a before-state" "before_state_available: false" "$OUT"
 
 printf '<div class="table"></div>\n' > "$PROJECT/index.html"
-OUT="$(field_case "the component has a page outside drafts/" ITEM-1 table "AC-2 The data rows render the same as before the change.")"
+OUT="$(field_case "the component has a page outside drafts/" ITEM-1 "" "AC-2 The data rows in blocks/table/ render the same as before the change.")"
 check "page outside drafts/ -> available" "before_state_available: true" "$OUT"
 
 OUT="$(field_case "no component named" ITEM-1 "" "Nothing to compare.")"
 check "no phrase -> not mentioned" "before_state_mentioned: false" "$OUT"
 check "no component -> not available" "before_state_available: false" "$OUT"
+
+# --- components ----------------------------------------------------------------
+# The existing units the text names: each blocks/<name>/ in files_named whose
+# directory exists in the checkout, in files_named order. The tracker's component
+# field is never read.
+
+echo "=== components tests ==="
+
+mkdir -p "$PROJECT/blocks/a" "$PROJECT/blocks/z"
+
+OUT="$(field_case "an existing and a missing block named" ITEM-1 "" "Change blocks/a/ to match blocks/b/.")"
+check "only the block that exists" "components: [a] " "$OUT"
+
+OUT="$(field_case "a tracker component, no path in the text" ITEM-1 c "Labels are cut off.")"
+check "tracker field not read" "components: [] " "$OUT"
+
+OUT="$(field_case "a tracker component that exists, not named in the text" ITEM-1 a "Labels are cut off.")"
+check "an existing tracker component is still not read" "components: [] " "$OUT"
+
+OUT="$(field_case "a directory and a file in the same block" ITEM-1 "" "Edit blocks/a/a.css in blocks/a/.")"
+check "one entry per block" "components: [a] " "$OUT"
+
+OUT="$(field_case "two existing blocks" ITEM-1 "" "Move the rule from blocks/z/z.css to blocks/a/.")"
+check "files_named order" "components: [a, z] " "$OUT"
 
 # --- design_source from attachments -----------------------------------------
 # Only an image under a reserved name is a design reference: the same rule the

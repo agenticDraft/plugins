@@ -53,31 +53,31 @@ NO_QA="$WORK/absent.qa.yaml"
 echo "=== resolve-target.py tests ==="
 
 echo "-- zero candidates"
-expect "no components, no blocks/ path -> question, no candidate" 4 \
+expect "no blocks/ path -> question, no candidate" 4 \
   "source=none" \
   "$(fact zero "" "styles/styles.css, scripts/scripts.js")" "$NO_QA"
 
 echo "-- exactly one candidate"
-expect "one component -> resolved from components" 0 \
-  "target=table${NL}source=components" \
+expect "components alone names no candidate" 4 \
+  "source=none" \
   "$(fact one-comp "table" "")" "$NO_QA"
-expect "no component, one distinct block in files_named -> resolved" 0 \
+expect "one distinct block in files_named -> resolved" 0 \
   "target=table${NL}source=files_named" \
   "$(fact one-file "" "blocks/table/, blocks/table/table.css, blocks/table/table.js, styles/styles.css")" "$NO_QA"
-expect "a component outranks files_named naming other blocks (EDS-18 with component table)" 0 \
-  "target=table${NL}source=components" \
-  "$(fact eds18 "table" "blocks/columns/, blocks/table/, blocks/table/table.css, blocks/table/table.js, styles/styles.css")" "$NO_QA"
-expect "one component named twice counts once" 0 \
-  "target=hero${NL}source=components" \
-  "$(fact dup-comp "hero, hero" "")" "$NO_QA"
+expect "one block named twice counts once" 0 \
+  "target=hero${NL}source=files_named" \
+  "$(fact dup-file "" "blocks/hero/, blocks/hero/hero.css")" "$NO_QA"
 
 echo "-- two or more candidates"
 expect "two blocks in files_named -> question listing both (EDS-18 as run)" 4 \
   "source=files_named${NL}candidate=columns${NL}candidate=table" \
   "$(fact two-file "" "blocks/columns/, blocks/table/, blocks/table/table.css, blocks/table/table.js, styles/styles.css")" "$NO_QA"
+expect "components never narrows files_named (a new block beside an existing one, EDS-19)" 4 \
+  "source=files_named${NL}candidate=columns${NL}candidate=quote" \
+  "$(fact eds19 "columns" "blocks/columns/, blocks/quote/")" "$NO_QA"
 expect "candidates are listed sorted, never in field order" 4 \
-  "source=components${NL}candidate=cards${NL}candidate=hero${NL}candidate=table" \
-  "$(fact three-comp "table, hero, cards" "")" "$NO_QA"
+  "source=files_named${NL}candidate=cards${NL}candidate=hero${NL}candidate=table" \
+  "$(fact three-file "" "blocks/table/, blocks/hero/, blocks/cards/")" "$NO_QA"
 
 echo "-- an answer outranks everything"
 QA_ONE="$(answer ans-one prototype target-block "blocks/columns/")"
@@ -94,8 +94,8 @@ expect "answer prose naming one blocks/ path resolves to it" 0 \
   "$(fact ans-prose "" "blocks/columns/, blocks/table/")" "$QA_PROSE"
 QA_NONE="$(answer ans-none prototype target-block "whatever you think is best")"
 expect "answer naming no block falls through to the fact record" 0 \
-  "target=hero${NL}source=components" \
-  "$(fact ans-none "hero" "")" "$QA_NONE"
+  "target=hero${NL}source=files_named" \
+  "$(fact ans-none "" "blocks/hero/")" "$QA_NONE"
 QA_TWO="$(answer ans-two prototype target-block "blocks/table/ or maybe blocks/columns/")"
 expect "answer naming two blocks -> question listing both" 4 \
   "source=answer${NL}candidate=columns${NL}candidate=table" \
@@ -103,8 +103,8 @@ expect "answer naming two blocks -> question listing both" 4 \
 QA_OTHER="$(answer ans-other prototype icon-collision "blocks/columns/")"
 QA_OTHER="$(answer ans-other cards target-block "blocks/cards/")"
 expect "answers under other keys are invisible" 0 \
-  "target=hero${NL}source=components" \
-  "$(fact ans-other "hero" "")" "$QA_OTHER"
+  "target=hero${NL}source=files_named" \
+  "$(fact ans-other "" "blocks/hero/")" "$QA_OTHER"
 
 echo "-- refusals"
 BROKEN="$WORK/broken.qa.yaml"
