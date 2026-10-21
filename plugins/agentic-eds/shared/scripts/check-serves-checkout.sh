@@ -27,10 +27,19 @@
 # characters. Detail that does not fit is dropped from the summary, never
 # from the `listener:` line the report keeps.
 #
+# Two servers use it: the preview server eds-serve starts from
+# `commands.serve`, and the draft server start-draft-server.sh starts on the
+# preview port plus one. The remedy differs — a preview server can be
+# repointed through `paths.preview`, the draft server's port is derived and
+# cannot — so the caller names which one it checked, and the summary names
+# the remedy that fits.
+#
 # One request, no ladder: the caller has already seen the origin answer.
 #
 # Usage:
-#   check-serves-checkout.sh <preview-url> <project-root> <started-here: yes|no>
+#   check-serves-checkout.sh <url> <project-root> <started-here: yes|no> [preview|draft]
+#
+# The fourth argument defaults to `preview`.
 #
 # Output on success: one line,
 #   serves-checkout: origin=<origin> root=<project-root>
@@ -53,12 +62,14 @@ set -uo pipefail
 URL="${1:-}"
 ROOT="${2:-}"
 STARTED="${3:-}"
+SERVER="${4:-preview}"
 PROBE_PATH=".ai/run-context/serve-probe.txt"
 REPORT_PATH=".ai/run-context/serve-report.md"
 SUMMARY_MAX=200
 
-if [[ -z "$URL" || -z "$ROOT" || ( "$STARTED" != "yes" && "$STARTED" != "no" ) ]]; then
-  echo "usage: check-serves-checkout.sh <preview-url> <project-root> <started-here: yes|no>" >&2
+if [[ -z "$URL" || -z "$ROOT" || ( "$STARTED" != "yes" && "$STARTED" != "no" ) \
+  || ( "$SERVER" != "preview" && "$SERVER" != "draft" ) ]]; then
+  echo "usage: check-serves-checkout.sh <url> <project-root> <started-here: yes|no> [preview|draft]" >&2
   exit 2
 fi
 
@@ -151,6 +162,17 @@ fi
 
 find_listener
 
+if [[ -z "$STATUS" || "$STATUS" == "000" ]] && [[ "$SERVER" == "draft" ]]; then
+  if [[ "$STARTED" == "yes" ]]; then
+    report_failure no-answer "nothing answered at $ORIGIN/$PROBE_PATH" \
+      "The draft server this run started at $ORIGIN stopped answering during the checkout check; see .ai/logs/draft-server.log, then rerun."
+  else
+    report_failure no-answer "nothing answered at $ORIGIN/$PROBE_PATH" \
+      "The draft server at $ORIGIN stopped answering during the checkout check; rerun, and a fresh one is started from this checkout."
+  fi
+  exit 1
+fi
+
 if [[ -z "$STATUS" || "$STATUS" == "000" ]]; then
   if [[ "$STARTED" == "yes" ]]; then
     report_failure no-answer "nothing answered at $ORIGIN/$PROBE_PATH" \
@@ -166,7 +188,17 @@ DETAIL="$ORIGIN answered status=$STATUS without this run's nonce at /$PROBE_PATH
 # Only what was actually found goes into a candidate: a process id and a
 # directory each appear only when lsof named them.
 CANDIDATES=()
-if [[ "$STARTED" == "yes" ]]; then
+if [[ "$SERVER" == "draft" ]]; then
+  # The draft port is the preview port plus one, never configured, so the
+  # only remedy is to free it; a server this run started and that fails the
+  # check means something else already held the port it polled.
+  [[ "$PID" != "unknown" && "$CWD" != "unknown" ]] && CANDIDATES+=(
+    "Draft server port $PORT is held by pid $PID (serving $CWD), not this checkout; stop it (kill $PID), then rerun so a draft server starts from this checkout.")
+  [[ "$PID" != "unknown" ]] && CANDIDATES+=(
+    "Draft server port $PORT is held by pid $PID, which does not serve this checkout; stop it (kill $PID), then rerun so a draft server starts from this checkout.")
+  CANDIDATES+=(
+    "Draft server port $PORT is held by a server that does not serve this checkout; stop what listens on port $PORT, then rerun so one starts from this checkout.")
+elif [[ "$STARTED" == "yes" ]]; then
   [[ "$PID" != "unknown" && "$CWD" != "unknown" ]] && CANDIDATES+=(
     "commands.serve started a server at $ORIGIN (pid $PID, serving $CWD) that does not serve this checkout; make it serve the project root, stop it (kill $PID), then rerun.")
   [[ "$PID" != "unknown" ]] && CANDIDATES+=(

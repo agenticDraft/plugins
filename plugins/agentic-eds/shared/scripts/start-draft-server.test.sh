@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# start-draft-server.test.sh — the draft server's branch-length gate (D539),
-# with `curl` and `npx` stubbed first on PATH. Each stub records its calls, so
-# the suite can assert that a too-long branch never polls and never starts.
+# start-draft-server.test.sh — the draft server's branch-length gate (D539)
+# and its checkout check, with `curl`, `npx` and `lsof` stubbed first on PATH.
+# Each stub records its calls, so the suite can assert that a too-long branch
+# never polls and never starts. The curl stub plays a server that serves the
+# working directory's files (the checkout), or another checkout's when
+# STUB_FOREIGN is set; the lsof stub names no listener.
 # Each case runs from a throwaway git repository with the branch checked out,
 # because the script measures the branch of its working directory.
 #
@@ -28,11 +31,22 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/start-draft-server.XXXXXX") || { echo "cannot 
 [ -n "$WORK" ] && [ -d "$WORK" ] || { echo "cannot create a temp dir" >&2; exit 2; }
 trap 'rm -rf "$WORK"' EXIT
 
-# Stubs: curl answers 200 (a server is already up); npx records and exits.
+# Stubs: curl answers 200 (a server is already up) and serves the working
+# directory's files, unless STUB_FOREIGN is set; npx records and exits; lsof
+# finds no listener.
 mkdir -p "$WORK/bin"
-printf '#!/usr/bin/env bash\nprintf "[%%s]" "$@" >> "%s/curl-calls"; echo >> "%s/curl-calls"\nprintf 200\n' "$WORK" "$WORK" > "$WORK/bin/curl"
+cat > "$WORK/bin/curl" <<STUB
+#!/usr/bin/env bash
+printf "[%s]" "\$@" >> "$WORK/curl-calls"; echo >> "$WORK/curl-calls"
+OUT=/dev/null
+while [ \$# -gt 1 ]; do [ "\$1" == "-o" ] && OUT="\$2"; shift; done
+FILE="\$PWD/\${1#*://*/}"
+if [ -z "\${STUB_FOREIGN:-}" ] && [ "\$1" != "\${1#*://*/}" ] && [ -f "\$FILE" ]; then cat "\$FILE" > "\$OUT"; fi
+printf 200
+STUB
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/npx-calls"\nexit 1\n' "$WORK" > "$WORK/bin/npx"
-chmod +x "$WORK/bin/curl" "$WORK/bin/npx"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$WORK/bin/lsof"
+chmod +x "$WORK/bin/curl" "$WORK/bin/npx" "$WORK/bin/lsof"
 export PATH="$WORK/bin:$PATH"
 
 # repo_on <branch> [--no-config] — a fresh repository with <branch> checked out
@@ -121,7 +135,15 @@ echo "[start] a checkout with no drafts folder gets one before the server starts
 # (so the first poll ladder runs out, about 30s); npx stays alive long
 # enough to count as started.
 mkdir -p "$WORK/bin-start"
-printf '#!/usr/bin/env bash\nif [ -s "%s/npx-calls" ]; then printf 200; else printf 000; fi\n' "$WORK" > "$WORK/bin-start/curl"
+cat > "$WORK/bin-start/curl" <<STUB
+#!/usr/bin/env bash
+[ -s "$WORK/npx-calls" ] || { printf 000; exit 0; }
+OUT=/dev/null
+while [ \$# -gt 1 ]; do [ "\$1" == "-o" ] && OUT="\$2"; shift; done
+FILE="\$PWD/\${1#*://*/}"
+if [ -z "\${STUB_FOREIGN:-}" ] && [ "\$1" != "\${1#*://*/}" ] && [ -f "\$FILE" ]; then cat "\$FILE" > "\$OUT"; fi
+printf 200
+STUB
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/npx-calls"\nsleep 5\n' "$WORK" > "$WORK/bin-start/npx"
 chmod +x "$WORK/bin-start/curl" "$WORK/bin-start/npx"
 DIR=$(repo_on "bbbbbbbbbbbbbbbbbbbbbbb")
@@ -130,6 +152,26 @@ OUT=$(cd "$DIR" && PATH="$WORK/bin-start:$PATH" bash "$START" "http://localhost:
 assert_eq "exit 0" "0" "$CODE"
 assert_has "started" "started=yes" "$OUT"
 if [ -d "$DIR/drafts" ]; then ok "drafts folder created"; else bad "drafts folder created" "absent: $DIR/drafts"; fi
+[ -s "$DIR/.ai/logs/d.pid" ] && kill "$(cat "$DIR/.ai/logs/d.pid")" 2>/dev/null
+
+echo "[foreign] a draft server answering from another checkout is exit 3, never reused"
+DIR=$(repo_on "bbbbbbbbbbbbbbbbbbbbbbb")
+rm -f "$WORK/npx-calls"
+OUT=$(cd "$DIR" && STUB_FOREIGN=1 bash "$START" "http://localhost:3000/preview" "$DIR/.ai/logs/d.log" "$DIR/.ai/logs/d.pid" 2>&1); CODE=$?
+assert_eq "exit 3" "3" "$CODE"
+assert_has "the check's reason" "reason: foreign" "$OUT"
+assert_has "the summary names the draft port and the remedy" "summary: Draft server port 3001 is held by a server that does not serve this checkout; stop what listens on port 3001" "$OUT"
+assert_lacks "never ready" "ready:" "$OUT"
+assert_no_file "npx not called (no second server on a held port)" "$WORK/npx-calls"
+assert_no_file "probe file removed" "$DIR/.ai/run-context/serve-probe.txt"
+
+echo "[foreign] a server started here that turns out foreign is exit 3 too"
+DIR=$(repo_on "bbbbbbbbbbbbbbbbbbbbbbb")
+rm -f "$WORK/npx-calls"
+OUT=$(cd "$DIR" && STUB_FOREIGN=1 PATH="$WORK/bin-start:$PATH" bash "$START" "http://localhost:3000/preview" "$DIR/.ai/logs/d.log" "$DIR/.ai/logs/d.pid" 2>&1); CODE=$?
+assert_eq "exit 3" "3" "$CODE"
+assert_has "the summary" "summary: Draft server port 3001" "$OUT"
+[ -s "$DIR/.ai/logs/d.pid" ] && ok "pid file kept for cleanup" || bad "pid file kept for cleanup" "absent"
 [ -s "$DIR/.ai/logs/d.pid" ] && kill "$(cat "$DIR/.ai/logs/d.pid")" 2>/dev/null
 
 echo "[usage] a missing argument is still exit 2, before any check"

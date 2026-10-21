@@ -155,6 +155,24 @@ OUT=$(PATH="$STUBBED_PATH" STUB_ROOT="$WORK/checkout" HTTP_PROXY="http://localho
 assert_eq "exit 0" "0" "$CODE"
 assert_has "curl told to proxy every host" "[--noproxy][]" "$(cat "$STUB_CALLS")"
 
+echo "[draft] the draft server: the remedy is freeing the derived port, never paths.preview"
+OUT=$(env -u HTTP_PROXY -u http_proxy PATH="$STUBBED_PATH" STUB_ROOT="$WORK/other" STUB_PID=555 STUB_CWD=/srv/old bash "$CHECK" "http://localhost:3001" "$WORK/checkout" no draft 2>&1); CODE=$?
+SUMMARY="$(printf '%s\n' "$OUT" | sed -n 's/^summary: //p')"
+assert_eq "exit 1" "1" "$CODE"
+assert_has "names the port, pid and directory" "Draft server port 3001 is held by pid 555 (serving /srv/old)" "$SUMMARY"
+assert_has "says what to do" "stop it (kill 555), then rerun so a draft server starts from this checkout." "$SUMMARY"
+assert_lacks "never paths.preview" "paths.preview" "$SUMMARY"
+assert_lacks "never commands.serve" "commands.serve" "$SUMMARY"
+assert_fits "summary fits the envelope"
+OUT=$(env -u HTTP_PROXY -u http_proxy PATH="$NO_LSOF_PATH" STUB_ROOT="$WORK/other" bash "$CHECK" "http://localhost:39873" "$WORK/checkout" yes draft 2>&1)
+SUMMARY="$(printf '%s\n' "$OUT" | sed -n 's/^summary: //p')"
+assert_has "no pid: names the port" "stop what listens on port 39873, then rerun" "$SUMMARY"
+OUT=$(env -u HTTP_PROXY -u http_proxy PATH="$STUBBED_PATH" STUB_ROOT="$WORK/checkout" STUB_STATUS=000 bash "$CHECK" "http://localhost:3001" "$WORK/checkout" yes draft 2>&1)
+SUMMARY="$(printf '%s\n' "$OUT" | sed -n 's/^summary: //p')"
+assert_has "started here, gone: the draft server's log" "see .ai/logs/draft-server.log, then rerun." "$SUMMARY"
+OUT=$(env -u HTTP_PROXY -u http_proxy PATH="$STUBBED_PATH" STUB_ROOT="$WORK/checkout" bash "$CHECK" "http://localhost:3001" "$WORK/checkout" no draft 2>&1); CODE=$?
+assert_eq "the draft server serving this checkout: exit 0" "0" "$CODE"
+
 echo "[usage] missing arguments, a bad started value, a URL without an origin, a missing root"
 OUT=$(bash "$CHECK" 2>&1); CODE=$?
 assert_eq "no arguments: exit 2" "2" "$CODE"
@@ -162,6 +180,8 @@ OUT=$(bash "$CHECK" "$URL" "$WORK/checkout" 2>&1); CODE=$?
 assert_eq "no started value: exit 2" "2" "$CODE"
 OUT=$(bash "$CHECK" "$URL" "$WORK/checkout" maybe 2>&1); CODE=$?
 assert_eq "started not yes or no: exit 2" "2" "$CODE"
+OUT=$(bash "$CHECK" "$URL" "$WORK/checkout" no other 2>&1); CODE=$?
+assert_eq "server not preview or draft: exit 2" "2" "$CODE"
 OUT=$(bash "$CHECK" "localhost:3000" "$WORK/checkout" no 2>&1); CODE=$?
 assert_eq "no scheme: exit 2" "2" "$CODE"
 OUT=$(bash "$CHECK" "$URL" "$WORK/missing" no 2>&1); CODE=$?

@@ -97,6 +97,7 @@ digraph eds_verify_design {
     "Start the draft server" -> "Draft server answering?";
     "Draft server answering?" -> "Render the draft page" [label="yes"];
     "Draft server answering?" -> "Report question" [label="no"];
+    "Draft server answering?" -> "Report fail" [label="another checkout's server"];
     "Render the draft page" -> "Page rendered?";
     "Page rendered?" -> "Capture and measure the draft page" [label="pass/warn"];
     "Page rendered?" -> "Report fail" [label="fail/question/invalid envelope"];
@@ -216,7 +217,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/start-draft-server.sh \
 
 It reuses a draft server already answering (`started=no`) and starts one only when nothing answers.
 
-Record its exit code and its `ready:`/`no-answer:`/`start-failed:` line — the `origin=` and `port=`
+Record its exit code and its `ready:`/`no-answer:`/`start-failed:` line, or on exit `3` its four
+`reason:`/`detail:`/`listener:`/`summary:` lines — the `origin=` and `port=`
 fields on success give the base this stage's render target is built from below.
 
 ### Draft server answering?
@@ -228,6 +230,12 @@ pipeline resolves it). Exit `1` — go to **Report question** (D89): the draft s
 answered, a TRANSIENT failure (core contract §8) whose recovery is one concrete thing a human can
 do, not a code change — this stage's own retries are already exhausted by the script's own poll
 ladder, so there is nothing left to attempt before escalating.
+
+Exit `3` — something answers at the draft origin but does not serve this checkout: another
+checkout's draft server holds the derived port, so the draft this stage would render is not this
+run's. Go to **Report fail**, not **Report question**: waiting or restarting does not free a port
+another checkout holds, and the script's own `summary:` line already names the port, the process
+and the remedy.
 
 ### Render the draft page
 
@@ -642,7 +650,8 @@ See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what ea
 
 - `verdict: fail`
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized summary fails validation and takes the whole run to `failed`) naming the specific reason — the missing input, the missing operation(s),
-  the missing draft file, the draft-server script's own `no-answer:`/`start-failed:` line, the
+  the missing draft file, the draft-server script's own `no-answer:`/`start-failed:` line or, on its exit `3`, its
+  `summary:` line verbatim, the
   render operation's own failure summary, or the remaining mismatch count after the last check. Never
   reworded into something more general.
 - `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): every screenshot, measurement file, and edited block file any check or edit produced,
