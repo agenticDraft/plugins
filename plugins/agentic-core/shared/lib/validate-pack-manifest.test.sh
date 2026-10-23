@@ -523,16 +523,22 @@ OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason says omit the key" "omit the key instead" "$OUT"
 
-echo "[reject] validator 18 — requires on a platform pack"
+echo "[accept] validator 18 — requires on a platform pack (D137)"
 PLAT_TMP="$(mktemp -d "${TMPDIR:-/tmp}/validate-pack-manifest-platform.XXXXXX")"
 cp -R "$FIXDIR/platform-valid/." "$PLAT_TMP/"
 printf 'requires:\n  - tool: example-tool\n    probe: [example-tool, --version]\n    remedy: "install example-tool"\n' \
   >> "$PLAT_TMP/pack.yaml"
 OUT=$(bash "$VALIDATOR" "$PLAT_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "accepted (exit 0)" 0 $ST "$OUT"
+assert_contains "still reports the kind" "valid: platform" "$OUT"
+
+echo "[reject] validator 18 — a malformed requires on a platform pack is held to the same shape"
+cp "$FIXDIR/platform-valid/pack.yaml" "$PLAT_TMP/pack.yaml"
+printf 'requires:\n  - tool: example-tool\n    probe: "example-tool --version"\n    remedy: "install example-tool"\n' \
+  >> "$PLAT_TMP/pack.yaml"
+OUT=$(bash "$VALIDATOR" "$PLAT_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
-assert_contains "reason names the kind it belongs to" "requires belongs to a provider pack, not a platform pack" "$OUT"
-[[ "$OUT" != *"unexpected content"* ]]
-assert_exit "reason does not misdiagnose as unexpected content" 0 $? ""
+assert_contains "reason names the tool and the expected shape" "requires.example-tool: expected 'probe: [<argv>" "$OUT"
 rm -rf "$PLAT_TMP"
 
 echo "[accept] validator 24 — session_tools declaring a tool and a remedy"
@@ -659,6 +665,195 @@ printf 'session_tools:\n  - tool: mcp__example-server__read_item\n    remedy: "e
 OUT=$(bash "$VALIDATOR" "$PLAT_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason names the kind it belongs to" "session_tools belongs to a provider pack, not a platform pack" "$OUT"
+rm -rf "$PLAT_TMP"
+
+# --- env, hosts, ignore_paths (validator 26, D137) ---------------------------
+
+# Writes a provider manifest whose tail (after `unsupported:`) is the
+# argument, so each case below states only the block under test.
+provider_with() {
+  {
+    printf 'kind: provider\nrole: design\noperations: {}\nunsupported: [fetch_reference]\n'
+    printf '%s\n' "$1"
+  } > "$PROV_TMP/pack.yaml"
+}
+
+echo "[accept] validator 26 — every declaration, in the fixed order, between requires and session_tools"
+provider_with 'requires:
+  - tool: example-tool
+    probe: [example-tool, --version]
+    remedy: "install example-tool"
+env:
+  - name: EXAMPLE_SITE
+    source: "the host name of your example site"
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings, API tokens"
+hosts: ["api.example.test", "*.example.test"]
+ignore_paths: [".ai/example/", "example-drafts/", ".ai/example.log"]
+session_tools:
+  - tool: mcp__example-server__read_item
+    remedy: "enable the example plugin"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "accepted (exit 0)" 0 $ST "$OUT"
+assert_contains "still reports the kind" "valid: provider" "$OUT"
+
+echo "[accept] validator 26 — each declaration alone"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "env alone accepted (exit 0)" 0 $ST "$OUT"
+provider_with 'hosts: ["api.example.test"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "hosts alone accepted (exit 0)" 0 $ST "$OUT"
+provider_with 'ignore_paths: [".ai/example/"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "ignore_paths alone accepted (exit 0)" 0 $ST "$OUT"
+
+echo "[reject] validator 26 — a value where a variable name belongs (committed fixture)"
+OUT=$(bash "$VALIDATOR" "$FIXDIR/provider-invalid/env-value-as-name/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says a name is expected" "env: 'name' must be a variable name" "$OUT"
+[[ "$OUT" != *"sk-live"* ]]
+assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
+
+echo "[reject] validator 26 — an assignment where a variable name belongs"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN=abc123
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says a name is expected" "env: 'name' must be a variable name" "$OUT"
+[[ "$OUT" != *"abc123"* ]]
+assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
+
+echo "[reject] validator 26 — a quoted or lower-case name"
+provider_with 'env:
+  - name: "EXAMPLE_API_TOKEN"
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a quoted name rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'env:
+  - name: example_api_token
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a lower-case name rejected (exit 1)" 1 $ST "$OUT"
+
+echo "[reject] validator 26 — an entry carrying a value field"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+    value: "abc123"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says an entry has a name and a source only" "env.EXAMPLE_API_TOKEN: an entry declares 'name' and 'source' only" "$OUT"
+[[ "$OUT" != *"abc123"* ]]
+assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
+
+echo "[reject] validator 26 — a value field placed before the source"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    value: "abc123"
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+[[ "$OUT" != *"abc123"* ]]
+assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
+
+echo "[reject] validator 26 — a missing or empty source"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a missing source rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the variable and source" "env.EXAMPLE_API_TOKEN: expected 'source:" "$OUT"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: " "'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an empty source rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says the source is empty" "env.EXAMPLE_API_TOKEN: 'source' is empty" "$OUT"
+
+echo "[reject] validator 26 — the same variable declared twice, and env present but empty"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a duplicate rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the duplicate" "env: 'EXAMPLE_API_TOKEN' is declared twice" "$OUT"
+provider_with 'env:'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an empty env rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says omit the key" "'env:' is present but declares no entries" "$OUT"
+
+echo "[reject] validator 26 — a host with a scheme, a port, a path, upper case, a bare word or no quotes"
+for bad in '"https://api.example.test"' '"api.example.test:443"' '"api.example.test/rest"' \
+           '"API.example.test"' '"localhost"' 'api.example.test' '"*example.test"' '"a.*.example.test"'; do
+  provider_with "hosts: [$bad]"
+  OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+  assert_exit "hosts: [$bad] rejected (exit 1)" 1 $ST "$OUT"
+done
+assert_contains "reason names the expected form" "hosts: each entry must be a double-quoted host name or '*.<domain>'" "$OUT"
+
+echo "[reject] validator 26 — hosts empty, or a host declared twice"
+provider_with 'hosts: []'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an empty list rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says omit the key" "'hosts:' is present but declares no entries" "$OUT"
+provider_with 'hosts: ["api.example.test", "api.example.test"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a duplicate rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the duplicate" "hosts: 'api.example.test' is declared twice" "$OUT"
+
+echo "[reject] validator 26 — an ignore path that is absolute, escapes, globs or is unquoted"
+for bad in '"/tmp/example/"' '"../example/"' '"a/../../b/"' '"*.log"' '"example/**/"' '"example[1]/"' \
+           '".ai/example/"x' '.ai/example/' '""'; do
+  provider_with "ignore_paths: [$bad]"
+  OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+  assert_exit "ignore_paths: [$bad] rejected (exit 1)" 1 $ST "$OUT"
+done
+
+echo "[reject] validator 26 — ignore_paths empty, or a path declared twice"
+provider_with 'ignore_paths: []'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an empty list rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says omit the key" "'ignore_paths:' is present but declares no entries" "$OUT"
+provider_with 'ignore_paths: [".ai/example/", ".ai/example/"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a duplicate rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the duplicate" "ignore_paths: '.ai/example/' is declared twice" "$OUT"
+
+echo "[reject] validator 26 — a declaration out of its fixed place"
+provider_with 'hosts: ["api.example.test"]
+env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "env after hosts rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'session_tools:
+  - tool: mcp__example-server__read_item
+    remedy: "enable the example plugin"
+ignore_paths: [".ai/example/"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "ignore_paths after session_tools rejected (exit 1)" 1 $ST "$OUT"
+
+echo "[accept] validator 26 — a platform pack declaring all three, before reference_docs"
+PLAT_TMP="$(mktemp -d "${TMPDIR:-/tmp}/validate-pack-manifest-platform.XXXXXX")"
+cp -R "$FIXDIR/platform-valid/." "$PLAT_TMP/"
+printf '%s\n' 'requires:' '  - tool: example-cli' '    probe: [example-cli, --version]' \
+  '    remedy: "install example-cli"' 'env:' '  - name: EXAMPLE_ADMIN_KEY' \
+  '    source: "the example admin console"' 'hosts: ["*.example.test"]' \
+  'ignore_paths: ["example-drafts/"]' 'reference_docs: "https://example.test/docs"' >> "$PLAT_TMP/pack.yaml"
+OUT=$(bash "$VALIDATOR" "$PLAT_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "accepted (exit 0)" 0 $ST "$OUT"
+assert_contains "still reports the kind" "valid: platform" "$OUT"
+
+echo "[reject] validator 26 — a platform pack's declaration after reference_docs"
+cp "$FIXDIR/platform-valid/pack.yaml" "$PLAT_TMP/pack.yaml"
+printf '%s\n' 'reference_docs: "https://example.test/docs"' 'ignore_paths: ["example-drafts/"]' >> "$PLAT_TMP/pack.yaml"
+OUT=$(bash "$VALIDATOR" "$PLAT_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 rm -rf "$PLAT_TMP"
 
 rm -rf "$PROV_TMP"

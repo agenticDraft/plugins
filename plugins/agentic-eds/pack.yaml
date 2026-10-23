@@ -111,4 +111,6 @@ authoring_examples_path: "work-item-examples"
 evidence_manifest: evidence-manifest
 branch_name:
   pattern: "^[a-z0-9/-]+$"
+hosts: ["*.aem.page"]
+ignore_paths: ["drafts/"]
 reference_docs: "https://developer.mozilla.org/en-US/"
