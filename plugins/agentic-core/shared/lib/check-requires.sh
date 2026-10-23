@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-requires.sh — Probe what a provider pack declared it needs present on
+# check-requires.sh — Probe what a pack declared it needs present on
 # this machine, and report. Reads the manifest's optional `requires:` key
 # (see shared/pack-manifest.md): per entry a `tool`, a `probe` given as
 # argv, and a `remedy`.

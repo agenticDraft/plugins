@@ -29,6 +29,16 @@
 #     expression that compiles) and nothing else; `max_length` there is
 #     refused, since the length limit is the project config's.
 #
+#   either kind — four optional declarations, in this order (D137):
+#     `requires` (validator 18) as described under provider below; `env`,
+#     the variables the pack's operations read, each a bare upper-case
+#     `name` and a quoted `source`, never a value; `hosts`, the network hosts
+#     they reach, each a quoted host name or `*.<domain>`; `ignore_paths`,
+#     the project-relative paths they write that are never committed, each
+#     quoted and literal (validator 26). A platform pack declares them after
+#     `branch_name` and before `reference_docs`; a provider pack after
+#     `text_conventions` and before `session_tools`.
+#
 #   provider — `role` is one of the four core roles; every key in
 #     `operations` and every entry in `unsupported` is an operation that
 #     role actually has; the two sets are disjoint; together they cover
@@ -206,6 +216,166 @@ bracket_list() {
   local trimmed="${text//[[:space:]]/}"
   [[ -z "$trimmed" ]] && return
   IFS=',' read -ra LIST <<< "$trimmed"
+}
+
+# Splits the inside of a bracket list whose every entry is double-quoted into
+# QLIST, keeping each entry exactly as written. Returns 1 when any entry is
+# unquoted or anything follows a closing quote other than a comma.
+QLIST=()
+quoted_list() {
+  local rest="$1"
+  QLIST=()
+  [[ -z "${rest//[[:space:]]/}" ]] && return 0
+  while [[ "$rest" =~ ^[[:space:]]*\"([^\"]*)\"[[:space:]]*(,(.*))?$ ]]; do
+    QLIST+=("${BASH_REMATCH[1]}")
+    [[ -n "${BASH_REMATCH[2]}" ]] || return 0
+    rest="${BASH_REMATCH[3]}"
+  done
+  return 1
+}
+
+# --- requires (validator 18, D97, D137) ---------------------------------------
+# Optional, on either kind. What this pack needs present on the machine that
+# runs it, as data a script can read: per entry a `tool`, a `probe` given as
+# argv, and a `remedy` a human runs. Absent means ungated, the same rule an
+# undeclared `unsupported:` list already follows.
+#
+# Nothing here probes anything. This validator checks the shape of the
+# declaration; who reads it, and when, is D97's business — the read-only
+# diagnostic and the operation's own first step, never pre-flight.
+#
+# `probe` must be a bracketed list, never a bare string: a string would
+# have to reach a shell to be run, and a shell is the one thing an
+# operation's precondition check must not need.
+check_requires() {
+  [[ "${LINES[cursor]:-}" =~ ^requires:$ ]] || return 0
+  cursor=$((cursor + 1))
+  local req_count=0 req_tool probe_raw probe_arg probe_path
+  while [[ "${LINES[cursor]:-}" =~ ^\ \ -\ tool:\ (.+)$ ]]; do
+    req_tool="${BASH_REMATCH[1]}"
+    [[ -n "${req_tool//[[:space:]]/}" ]] \
+      || fail "requires: an entry declares an empty 'tool'"
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ probe:\ \[(.*)\]$ ]] \
+      || fail "requires.$req_tool: expected 'probe: [<argv>, …]' as a list, got '${LINES[cursor]:-<end of file>}'"
+    probe_raw="${BASH_REMATCH[1]}"
+    bracket_list "$probe_raw"
+    [[ ${#LIST[@]} -gt 0 && -n "${LIST[0]:-}" ]] \
+      || fail "requires.$req_tool: 'probe' is an empty list — a probe that runs nothing cannot answer whether the tool is present"
+    # An argument prefixed `<pack>/` names a file the pack itself ships —
+    # how a pack whose "is it present" question needs real logic declares
+    # that logic. It is resolved and checked here exactly as a `scripts:`
+    # path is, because a probe pointing at a file that is not there is a
+    # check that will never run, and a check that never runs must not look
+    # like one that passed.
+    for probe_arg in "${LIST[@]}"; do
+      [[ "$probe_arg" == "<pack>/"* ]] || continue
+      probe_path="${probe_arg#<pack>/}"
+      validate_declared_path "requires.$req_tool.probe" "$probe_path"
+      [[ -f "$PACK_ROOT/$probe_path" ]] \
+        || fail "requires.$req_tool: 'probe' names a file this pack does not ship: '$probe_path'"
+    done
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ remedy:\ \"(.*)\"$ ]] \
+      || fail "requires.$req_tool: expected 'remedy: \"<what a human runs>\"', got '${LINES[cursor]:-<end of file>}'"
+    [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
+      || fail "requires.$req_tool: 'remedy' is empty — a missing tool with no remedy is a dead end for whoever hits it"
+    cursor=$((cursor + 1))
+
+    req_count=$((req_count + 1))
+  done
+  [[ $req_count -eq 0 ]] \
+    && fail "'requires:' is present but declares no entries — omit the key instead"
+  return 0
+}
+
+# --- env (validator 26, D137) -------------------------------------------------
+# Optional, on either kind. The environment variables this pack's operations
+# read: per entry a bare `name` and a `source` telling a human where to get the
+# value. A value is never declared, so nothing that could be one is echoed back
+# in a rejection.
+check_env() {
+  [[ "${LINES[cursor]:-}" =~ ^env:$ ]] || return 0
+  cursor=$((cursor + 1))
+  local env_name seen env_count=0 env_seen=" "
+  while [[ "${LINES[cursor]:-}" =~ ^\ \ -\ name:(.*)$ ]]; do
+    env_name="${BASH_REMATCH[1]# }"
+    [[ "$env_name" =~ ^[A-Z][A-Z0-9_]*$ ]] \
+      || fail "env: 'name' must be a variable name (upper-case letters, digits and '_', unquoted), never a value"
+    [[ "$env_seen" == *" $env_name "* ]] && fail "env: '$env_name' is declared twice"
+    env_seen+="$env_name "
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ source:\ \"(.*)\"$ ]] \
+      || fail "env.$env_name: expected 'source: \"<where a human gets the value>\"' after the name"
+    [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
+      || fail "env.$env_name: 'source' is empty — a variable with no source is a dead end for whoever fills it"
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ [^\ ] ]] \
+      && fail "env.$env_name: an entry declares 'name' and 'source' only"
+    env_count=$((env_count + 1))
+  done
+  [[ $env_count -eq 0 ]] \
+    && fail "'env:' is present but declares no entries — omit the key instead"
+  return 0
+}
+
+# --- hosts (validator 26, D137) -----------------------------------------------
+# Optional, on either kind. The network hosts this pack's operations reach, in
+# the form a sandbox allowlist takes: a literal host name or `*.<domain>`, with
+# no scheme, port or path.
+check_hosts() {
+  [[ "${LINES[cursor]:-}" =~ ^hosts:\ \[(.*)\]$ ]] || return 0
+  local label='[a-z0-9]([a-z0-9-]*[a-z0-9])?' host host_seen=" "
+  quoted_list "${BASH_REMATCH[1]}" \
+    || fail "hosts: each entry must be a double-quoted host name or '*.<domain>'"
+  [[ ${#QLIST[@]} -eq 0 ]] \
+    && fail "'hosts:' is present but declares no entries — omit the key instead"
+  for host in "${QLIST[@]}"; do
+    [[ "$host" =~ ^(\*\.)?${label}(\.${label})+$ ]] \
+      || fail "hosts: each entry must be a double-quoted host name or '*.<domain>' (lower case, no scheme, port or path), got '$host'"
+    [[ "$host_seen" == *" $host "* ]] && fail "hosts: '$host' is declared twice"
+    host_seen+="$host "
+  done
+  cursor=$((cursor + 1))
+}
+
+# --- ignore_paths (validator 26, D137) ----------------------------------------
+# Optional, on either kind. The project-relative paths this pack writes that
+# must never be committed; a directory ends in `/`. A literal path only — a
+# glob would let what the ignore file hides and what delivery excludes differ.
+check_ignore_paths() {
+  [[ "${LINES[cursor]:-}" =~ ^ignore_paths:\ \[(.*)\]$ ]] || return 0
+  local path path_seen=" "
+  quoted_list "${BASH_REMATCH[1]}" \
+    || fail "ignore_paths: each entry must be a double-quoted project-relative path"
+  [[ ${#QLIST[@]} -eq 0 ]] \
+    && fail "'ignore_paths:' is present but declares no entries — omit the key instead"
+  for path in "${QLIST[@]}"; do
+    [[ -n "$path" ]] || fail "ignore_paths: an entry is empty"
+    [[ "$path" != /* ]] || fail "ignore_paths: '$path' must be relative to the project, not absolute"
+    case "/$path/" in
+      */../*) fail "ignore_paths: '$path' may not contain a '..' path segment" ;;
+    esac
+    case "$path" in
+      *'*'* | *'?'* | *'['* | *']'* | *'!'* | *'\'* | *' '* | *$'\t'*)
+        fail "ignore_paths: '$path' must be a literal path — no glob character, backslash or space" ;;
+    esac
+    [[ "$path_seen" == *" $path "* ]] && fail "ignore_paths: '$path' is declared twice"
+    path_seen+="$path "
+  done
+  cursor=$((cursor + 1))
+}
+
+# The four declarations either kind may carry, in their fixed order (D137).
+check_declarations() {
+  check_requires
+  check_env
+  check_hosts
+  check_ignore_paths
 }
 
 require_line '^kind: (platform|provider)$' "'kind: platform' or 'kind: provider'"
@@ -449,6 +619,9 @@ if [[ "$kind" == "platform" ]]; then
     cursor=$((cursor + 1))
   fi
 
+  # --- requires, env, hosts, ignore_paths (validators 18 and 26, D137) ------
+  check_declarations
+
   # --- reference_docs (validator 23, D117) ----------------------------------
   # Optional, the last platform key. The platform's official reference, read by
   # a stage or the authoring skill before deciding a question no project rule
@@ -460,13 +633,9 @@ if [[ "$kind" == "platform" ]]; then
     cursor=$((cursor + 1))
   fi
 
-  # `requires:` is a provider key (validator 18, D97). A platform pack binds
-  # stages, never a role's operations, so it has no tool of its own to
-  # declare. Checked before the trailing catch-all below, which would
-  # otherwise reject it as a parse error that says nothing about why.
-  if [[ "${LINES[cursor]:-}" == "requires:" ]]; then
-    fail "requires belongs to a provider pack, not a platform pack"
-  fi
+  # `session_tools:` is a provider key (validator 24). Checked before the
+  # trailing catch-all below, which would otherwise reject it as a parse error
+  # that says nothing about why.
   if [[ "${LINES[cursor]:-}" == "session_tools:" ]]; then
     fail "session_tools belongs to a provider pack, not a platform pack"
   fi
@@ -678,60 +847,8 @@ if [[ "$kind" == "provider" ]]; then
       && fail "text_conventions is present but declares none of 'design_keywords', 'before_state_keywords', 'reproduction_headings' or 'acceptance_criteria_headings'"
   fi
 
-  # --- requires (validator 18, D97) -----------------------------------------
-  # Optional. What this pack needs present on the machine that runs it, as
-  # data a script can read: per entry a `tool`, a `probe` given as argv, and
-  # a `remedy` a human runs. Absent means ungated, the same rule an
-  # undeclared `unsupported:` list already follows.
-  #
-  # Nothing here probes anything. This validator checks the shape of the
-  # declaration; who reads it, and when, is D97's business — the read-only
-  # diagnostic and the operation's own first step, never pre-flight.
-  #
-  # `probe` must be a bracketed list, never a bare string: a string would
-  # have to reach a shell to be run, and a shell is the one thing an
-  # operation's precondition check must not need.
-  if [[ "${LINES[cursor]:-}" =~ ^requires:$ ]]; then
-    cursor=$((cursor + 1))
-    req_count=0
-    while [[ "${LINES[cursor]:-}" =~ ^\ \ -\ tool:\ (.+)$ ]]; do
-      req_tool="${BASH_REMATCH[1]}"
-      [[ -n "${req_tool//[[:space:]]/}" ]] \
-        || fail "requires: an entry declares an empty 'tool'"
-      cursor=$((cursor + 1))
-
-      [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ probe:\ \[(.*)\]$ ]] \
-        || fail "requires.$req_tool: expected 'probe: [<argv>, …]' as a list, got '${LINES[cursor]:-<end of file>}'"
-      probe_raw="${BASH_REMATCH[1]}"
-      bracket_list "$probe_raw"
-      [[ ${#LIST[@]} -gt 0 && -n "${LIST[0]:-}" ]] \
-        || fail "requires.$req_tool: 'probe' is an empty list — a probe that runs nothing cannot answer whether the tool is present"
-      # An argument prefixed `<pack>/` names a file the pack itself ships —
-      # how a pack whose "is it present" question needs real logic declares
-      # that logic. It is resolved and checked here exactly as a `scripts:`
-      # path is, because a probe pointing at a file that is not there is a
-      # check that will never run, and a check that never runs must not look
-      # like one that passed.
-      for probe_arg in "${LIST[@]}"; do
-        [[ "$probe_arg" == "<pack>/"* ]] || continue
-        probe_path="${probe_arg#<pack>/}"
-        validate_declared_path "requires.$req_tool.probe" "$probe_path"
-        [[ -f "$PACK_ROOT/$probe_path" ]] \
-          || fail "requires.$req_tool: 'probe' names a file this pack does not ship: '$probe_path'"
-      done
-      cursor=$((cursor + 1))
-
-      [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ remedy:\ \"(.*)\"$ ]] \
-        || fail "requires.$req_tool: expected 'remedy: \"<what a human runs>\"', got '${LINES[cursor]:-<end of file>}'"
-      [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
-        || fail "requires.$req_tool: 'remedy' is empty — a missing tool with no remedy is a dead end for whoever hits it"
-      cursor=$((cursor + 1))
-
-      req_count=$((req_count + 1))
-    done
-    [[ $req_count -eq 0 ]] \
-      && fail "'requires:' is present but declares no entries — omit the key instead"
-  fi
+  # --- requires, env, hosts, ignore_paths (validators 18 and 26, D137) ------
+  check_declarations
 
   # --- session_tools (validator 24) -----------------------------------------
   # Optional. The tools this pack's operations call that only the session can

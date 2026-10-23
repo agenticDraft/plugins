@@ -1,0 +1,13 @@
+# The core's own paths in a project. `ignore <path>`: a file a run writes, never committed.
+# `commit <path>`: a project file committed on purpose. A directory ends in `/`. Pack paths are each pack's `ignore_paths`.
+ignore .ai/run-context/
+ignore .ai/logs/
+ignore .ai/run-state.json
+ignore .ai/progress.md
+ignore .ai/route-progress.txt
+commit .ai/project-config.yaml
+commit .ai/project-conventions.yaml
+commit .ai/route-policy.yaml
+commit .ai/specs/
+commit .ai/design/
+commit .ai/packs/

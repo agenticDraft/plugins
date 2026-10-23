@@ -7,3 +7,8 @@ operations:
 unsupported: []
 scripts:
   check_status: "skills/check-status/scripts/check-status.sh"
+env:
+  - name: GH_TOKEN
+    source: "a GitHub fine-grained personal access token whose resource owner owns this repository, with access to it and Pull requests: read and write (github.com/settings/personal-access-tokens); gh reads it when nobody is logged in, so leave the placeholder if you use gh auth login"
+hosts: ["api.github.com"]
+ignore_paths: [".ai/scm/"]
