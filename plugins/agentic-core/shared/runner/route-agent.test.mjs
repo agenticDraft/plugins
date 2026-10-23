@@ -35,9 +35,14 @@ function start(env) {
   });
   let result = "";
   try {
-    result = readFileSync(join(cwd, "result.txt"), "utf8");
-  } catch {}
-  rmSync(cwd, { recursive: true, force: true });
+    // A runner that could not be spawned has no status; fail on the cause, not on a null exit.
+    if (run.error) throw run.error;
+    try {
+      result = readFileSync(join(cwd, "result.txt"), "utf8");
+    } catch {}
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
   return { status: run.status, stderr: run.stderr, result };
 }
 
@@ -49,7 +54,10 @@ test("an unset ROUTE_PLUGIN_DIR starts nothing: exit 7, said in the log and the 
 });
 
 test("an empty ROUTE_PLUGIN_DIR is refused the same way", { skip: SKIP }, () => {
-  assert.equal(start({ ROUTE_PLUGIN_DIR: "" }).status, 7);
+  const r = start({ ROUTE_PLUGIN_DIR: "" });
+  assert.equal(r.status, 7, r.stderr);
+  assert.match(r.stderr, /plugin directory refused: ROUTE_PLUGIN_DIR is not set/);
+  assert.match(r.result, /plugin directory refused: ROUTE_PLUGIN_DIR is not set/);
 });
 
 test("a set ROUTE_PLUGIN_DIR passes on to the next refusal, the missing policy", { skip: SKIP }, () => {
