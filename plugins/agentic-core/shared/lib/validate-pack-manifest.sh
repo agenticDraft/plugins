@@ -293,8 +293,8 @@ check_requires() {
 
 # --- env (validator 26, D137) -------------------------------------------------
 # Optional, on either kind. The environment variables this pack's operations
-# read: per entry a bare `name` and a `source` telling a human where to get the
-# value. A value is never declared, so nothing that could be one is echoed back
+# read: per entry a bare `name`, a `source` telling a human where to get the
+# value and, optionally, a `login_alternative`. A value is never declared, so nothing that could be one is echoed back
 # in a rejection.
 check_env() {
   [[ "${LINES[cursor]:-}" =~ ^env:$ ]] || return 0
@@ -314,8 +314,15 @@ check_env() {
       || fail "env.$env_name: 'source' is empty — a variable with no source is a dead end for whoever fills it"
     cursor=$((cursor + 1))
 
+    # Optional (D139): a login that replaces the variable; setup writes no key for it.
+    if [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ login_alternative:\ \"(.*)\"$ ]]; then
+      [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
+        || fail "env.$env_name: 'login_alternative' is empty — omit it instead"
+      cursor=$((cursor + 1))
+    fi
+
     [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ [^\ ] ]] \
-      && fail "env.$env_name: an entry declares 'name' and 'source' only"
+      && fail "env.$env_name: an entry declares 'name', 'source' and 'login_alternative' only"
     env_count=$((env_count + 1))
   done
   [[ $env_count -eq 0 ]] \
