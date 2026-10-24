@@ -96,6 +96,25 @@ assert_exit "present tool -> exit 0" 0 "$RC" "$OUT"
 assert_contains "reports it present" "ok: present-tool" "$OUT"
 assert_not_contains "says nothing about a remedy when nothing is missing" "install present-tool" "$OUT"
 
+echo "[ok] a platform pack's requires, followed by the other declarations (D137)"
+PLATFORM="$TMPDIR_TEST/platform.yaml"
+cat > "$PLATFORM" <<'EOF'
+kind: platform
+requires:
+  - tool: present-tool
+    probe: [present-tool, --version]
+    remedy: "install present-tool"
+env:
+  - name: EXAMPLE_ADMIN_KEY
+    source: "the example admin console"
+hosts: ["*.example.test"]
+ignore_paths: ["example-drafts/"]
+EOF
+OUT=$("$CHECKER" "$PLATFORM" 2>&1); RC=$?
+assert_exit "platform pack's present tool -> exit 0" 0 "$RC" "$OUT"
+assert_contains "reports it present" "ok: present-tool" "$OUT"
+assert_not_contains "stops at the block's end, never reading env as a tool" "EXAMPLE_ADMIN_KEY" "$OUT"
+
 echo "[missing] a tool that is not installed"
 ABSENT="$TMPDIR_TEST/absent.yaml"
 cat > "$ABSENT" <<'EOF'

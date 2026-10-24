@@ -13,3 +13,12 @@ text_conventions:
   before_state_keywords: [same as before, as it does today, unchanged from, renders the same, no visual change]
   reproduction_headings: [Steps to reproduce, Steps, Repro]
   acceptance_criteria_headings: [Acceptance Criteria, AC]
+env:
+  - name: JIRA_SITE
+    source: "the host name of your Jira Cloud site: the <site>.atlassian.net part of its address, without https://"
+  - name: JIRA_EMAIL
+    source: "the email address of the Atlassian account the API token belongs to"
+  - name: JIRA_API_TOKEN
+    source: "an Atlassian API token for that account: id.atlassian.com/manage-profile/security/api-tokens"
+hosts: ["*.atlassian.net"]
+ignore_paths: [".ai/tracker/"]

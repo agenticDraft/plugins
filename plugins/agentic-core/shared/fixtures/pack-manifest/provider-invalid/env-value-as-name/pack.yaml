@@ -1,0 +1,7 @@
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+env:
+  - name: sk-live-0000example0000
+    source: "example account settings"

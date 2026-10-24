@@ -15,3 +15,4 @@ requires:
   - tool: chromium
     probe: [node, <pack>/scripts/probe-tool.cjs, browser]
     remedy: "npx playwright@1.63.0 install chromium"
+ignore_paths: [".ai/playwright/"]
