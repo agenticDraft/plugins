@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
-# write-provider-packs.sh — Mechanical merge of the
-# packs.tracker/packs.scm/packs.design values into a project config file (see
+# write-provider-packs.sh — Mechanical merge of the five `packs:` values —
+# platform, tracker, scm, design, browser — into a project config file (see
 # shared/project-config.md). No judgment involved: the caller has already
 # detected and confirmed the values with a human; this script only places
 # them in the fixed shape.
 #
-# Writes exactly three of the five sub-keys under `packs:` — `tracker`, `scm`
-# and `design`. It never touches `packs.platform` or `packs.browser`: no pack
-# for either role is selected by this script, so a file it produces
-# standalone will not pass validate-project-config.sh until another step adds
-# the remaining sub-keys.
-#
-# The three are written together, as one block, because the block is replaced
+# The five are written together, as one block, because the block is replaced
 # wholesale rather than edited line by line. A caller with a value for only
-# one of them has not finished detecting; it either carries the other two
+# some of them has not finished detecting; it either carries the others
 # forward from the file it is updating, or it has nothing to write yet.
 #
 # Usage:
-#   write-provider-packs.sh <config-path> <tracker> <scm> <design>
+#   write-provider-packs.sh <config-path> <platform> <tracker> <scm> <design> <browser>
 #
 # Behavior:
 #   - <config-path> does not exist: creates its parent directory if needed,
-#     then creates it with `version: 1` plus a `packs:` block holding only
-#     `tracker`, `scm` and `design`.
+#     then creates it with `version: 1` plus the `packs:` block.
 #   - <config-path> exists and already has a `packs:` block in a shape this
-#     script wrote — tracker/scm, with or without a following design — the
-#     whole block is replaced; every other line in the file is left untouched.
+#     script wrote — the five roles, or the tracker/scm[/design] block an
+#     earlier version wrote — the whole block is replaced; every other line in
+#     the file is left untouched.
 #   - <config-path> exists, has a `version:` line, but no `packs:` block yet
 #     (the shape write-detected-config.sh alone produces): a `packs:` block
 #     is inserted immediately after `version:` (and the blank line that
@@ -36,7 +30,7 @@
 #
 # Exit codes:
 #   0 — success; "written: <path>" or "updated: <path>" on stdout
-#   1 — contract violation: an empty tracker/scm/design value, a value containing a
+#   1 — contract violation: an empty value, a value containing a
 #       double quote (would corrupt the line), an existing `packs:` block
 #       not in the shape this script wrote, or no `version:` line to anchor
 #       an insertion against
@@ -44,22 +38,24 @@
 
 set -uo pipefail
 
-if [[ $# -ne 4 ]]; then
-  echo "usage: write-provider-packs.sh <config-path> <tracker> <scm> <design>" >&2
+if [[ $# -ne 6 ]]; then
+  echo "usage: write-provider-packs.sh <config-path> <platform> <tracker> <scm> <design> <browser>" >&2
   exit 2
 fi
 
 CONFIG_PATH="$1"
-TRACKER="$2"
-SCM="$3"
-DESIGN="$4"
+PLATFORM="$2"
+TRACKER="$3"
+SCM="$4"
+DESIGN="$5"
+BROWSER="$6"
 
 fail() {
   echo "invalid: $1" >&2
   exit 1
 }
 
-for pair in "tracker:$TRACKER" "scm:$SCM" "design:$DESIGN"; do
+for pair in "platform:$PLATFORM" "tracker:$TRACKER" "scm:$SCM" "design:$DESIGN" "browser:$BROWSER"; do
   key="${pair%%:*}"
   value="${pair#*:}"
   [[ -z "$value" ]] && fail "packs.${key} is empty"
@@ -67,14 +63,15 @@ for pair in "tracker:$TRACKER" "scm:$SCM" "design:$DESIGN"; do
 done
 
 # Sub-key order is the config schema's own: platform, tracker, scm, design,
-# browser. The two this script does not write are simply absent, so what it
-# writes is a prefix-consistent slice of that order rather than a reordering.
+# browser.
 packs_block() {
   cat <<EOF
 packs:
+  platform: $PLATFORM
   tracker: $TRACKER
   scm: $SCM
   design: $DESIGN
+  browser: $BROWSER
 EOF
 }
 
@@ -109,18 +106,26 @@ find_line() {
 }
 
 if packs_idx=$(find_line "packs:"); then
-  # Two shapes are recognised, because a file written before this script grew
-  # its third sub-key is still a file this script owns: the header plus
-  # tracker/scm (3 lines), or the header plus tracker/scm/design (4 lines).
-  # Either is replaced wholesale by the current block; anything else is a
-  # block this script did not write and must not rewrite blind.
-  SHAPE="'packs:' followed by tracker/scm, optionally then design"
-  [[ "${LINES[packs_idx + 1]:-}" =~ ^\ \ tracker:\  ]] || fail "existing 'packs:' block is not in the expected shape ($SHAPE)"
-  [[ "${LINES[packs_idx + 2]:-}" =~ ^\ \ scm:\  ]] || fail "existing 'packs:' block is not in the expected shape ($SHAPE)"
-  if [[ "${LINES[packs_idx + 3]:-}" =~ ^\ \ design:\  ]]; then
-    packs_block_len=4
-  else
-    packs_block_len=3
+  # Three shapes are recognised, because a file written by an earlier version
+  # of this script is still a file it owns: the five roles (6 lines), or the
+  # header plus tracker/scm (3 lines), optionally then design (4 lines). Each
+  # is replaced wholesale by the current block; anything else is a block this
+  # script did not write and must not rewrite blind.
+  SHAPE="'packs:' followed by platform/tracker/scm/design/browser, or by tracker/scm optionally then design"
+  first=$((packs_idx + 1))
+  if [[ "${LINES[packs_idx + 1]:-}" =~ ^\ \ platform:\  ]]; then
+    first=$((packs_idx + 2))
+  fi
+  [[ "${LINES[first]:-}" =~ ^\ \ tracker:\  ]] || fail "existing 'packs:' block is not in the expected shape ($SHAPE)"
+  [[ "${LINES[first + 1]:-}" =~ ^\ \ scm:\  ]] || fail "existing 'packs:' block is not in the expected shape ($SHAPE)"
+  packs_block_len=$((first + 2 - packs_idx))
+  if [[ "${LINES[first + 2]:-}" =~ ^\ \ design:\  ]]; then
+    packs_block_len=$((packs_block_len + 1))
+  fi
+  if (( first == packs_idx + 2 )); then
+    [[ "${LINES[packs_idx + packs_block_len]:-}" =~ ^\ \ browser:\  ]] \
+      || fail "existing 'packs:' block is not in the expected shape ($SHAPE)"
+    packs_block_len=$((packs_block_len + 1))
   fi
 
   OUT=()
