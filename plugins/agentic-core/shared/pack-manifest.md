@@ -46,6 +46,7 @@ env:                                       # optional
     source: "<where a human gets the value>"
 hosts: ["<host>", "*.<domain>", …]         # optional
 ignore_paths: ["<relative path>", …]       # optional
+config_derivation: "<relative path>"       # optional; a script, relative to the pack root
 reference_docs: "<https url>"              # optional; last
 ```
 
@@ -89,8 +90,8 @@ Fixed per kind, in order.
   `onboarding_state_path`, `audit_findings_path` (D80) and `audit_digest_path` (G500) are the
   exceptions to "all required" — all three optional, and a pack may declare any subset of them,
   including none. So is `authoring_examples_path` (D132), which follows them. After `branch_name`
-  come the four optional declarations `requires`, `env`, `hosts`, `ignore_paths`, then
-  `reference_docs` last.
+  come the four optional declarations `requires`, `env`, `hosts`, `ignore_paths`, then the optional
+  `config_derivation`, then `reference_docs` last.
 - **provider** — `kind`, `role`, `operations`, `unsupported`, `scripts`, `text_conventions` for
   the `tracker` role, `requires`, `env`, `hosts`, `ignore_paths`, `session_tools`. The first four are
   required; `unsupported` may be empty (`[]`) but must be present. Every key after `unsupported` is
@@ -160,6 +161,15 @@ open class.
   and the limit from the project config, and answers `ok`, `too-long` or `bad-chars`. The core plugin's hook runs that check on every
   branch-creating command an agent issues and blocks the command when the name fails. A pack that
   declares nothing is unconstrained.
+- `config_derivation` (D138) — optional, platform packs only. A double-quoted path, relative to the
+  pack root, of a script that derives this project's own config values from its repository remote.
+  The core's `setup` runs it once as `<script> --remote <remote URL>` through
+  `lib/derive-project-values.sh`; every line it prints must be `branch_name.max_length=<positive int>`
+  or `platform.<snake_case key>=<value>`, or the whole output is refused. `setup` writes the lines
+  into the project config (`project-config.md`) and never asks the human for them. What is derived,
+  and how, is the pack's; the core learns neither. Checked as a `scripts:` path is: relative, no `..`
+  segment, the file exists (validator 27). A pack that declares none leaves those keys to a hand
+  edit.
 - `reference_docs` (D117) — optional, the last platform key: one double-quoted `https` URL, the
   platform's official reference. Every stage that writes code, and the item-authoring skill, read it
   before deciding a question no project rule answers, and cite what they read
@@ -300,6 +310,9 @@ digraph route {
   path segment, comes after `evidence_manifest`, or appears on a provider manifest.
 - `branch_name` with no `pattern`, with a `max_length` (the project config's, not the pack's), or
   with an unquoted, empty or non-compiling `pattern`.
+- `config_derivation` that is not double-quoted, is empty, absolute or contains a `..` segment, names
+  a file that does not exist, comes before `ignore_paths` or after `reference_docs`, or appears on a
+  provider manifest.
 - `reference_docs` that is not one double-quoted `https` URL, or any key after it.
 - Any file under the pack root containing the literal sequence `{{`, the reserved marker for an
   unfilled template placeholder. A generated pack that still carries one is a failed setup, not a
@@ -524,7 +537,7 @@ keys coexist with an otherwise-conformant manifest, and in that order.
 `fixtures/pack-manifest/provider-invalid/` holds `missing-operation`, `unknown-operation`,
 `dangling-skill`, `authoring-examples-path` and `env-value-as-name` (a token-shaped value where a
 variable name belongs). `scripts`'s own rejection cases (unknown operation, dangling script,
-present-but-empty) and those of `env`, `hosts` and `ignore_paths` are inline in the validator's test
+present-but-empty) and those of `env`, `hosts`, `ignore_paths` and `config_derivation` are inline in the validator's test
 suite, alongside the remaining shape errors that fit a single block.
 
 `fixtures/session-tools/` holds the session-tools comparison's inputs: `one-tool`, `two-tools` (after a
