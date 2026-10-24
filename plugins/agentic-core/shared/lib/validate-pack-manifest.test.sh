@@ -746,7 +746,7 @@ provider_with 'env:
     value: "abc123"'
 OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
-assert_contains "reason says an entry has a name and a source only" "env.EXAMPLE_API_TOKEN: an entry declares 'name' and 'source' only" "$OUT"
+assert_contains "reason names the fields an entry may carry" "env.EXAMPLE_API_TOKEN: an entry declares 'name', 'source' and 'login_alternative' only" "$OUT"
 [[ "$OUT" != *"abc123"* ]]
 assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
 
@@ -772,6 +772,46 @@ provider_with 'env:
 OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "an empty source rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason says the source is empty" "env.EXAMPLE_API_TOKEN: 'source' is empty" "$OUT"
+
+echo "[accept] validator 26 — a variable a login replaces (D139)"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+    login_alternative: "example-cli auth login"
+  - name: EXAMPLE_SITE
+    source: "the host name of your example site"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "login_alternative after source accepted (exit 0)" 0 $ST "$OUT"
+
+echo "[reject] validator 26 — login_alternative empty, unquoted, before the source, or followed by another field"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+    login_alternative: " "'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an empty login_alternative rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says it is empty" "env.EXAMPLE_API_TOKEN: 'login_alternative' is empty" "$OUT"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+    login_alternative: example-cli auth login'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "an unquoted login_alternative rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    login_alternative: "example-cli auth login"
+    source: "example account settings"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "login_alternative before source rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+    login_alternative: "example-cli auth login"
+    value: "abc123"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a value after login_alternative rejected (exit 1)" 1 $ST "$OUT"
+[[ "$OUT" != *"abc123"* ]]
+assert_exit "the rejection does not echo the value back" 0 $? "$OUT"
 
 echo "[reject] validator 26 — the same variable declared twice, and env present but empty"
 provider_with 'env:

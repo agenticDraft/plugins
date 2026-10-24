@@ -1,5 +1,6 @@
-# The core's own paths in a project. `ignore <path>`: a file a run writes, never committed.
+# The core's own paths in a project. `ignore <path>`: a file a run or setup writes, never committed.
 # `commit <path>`: a project file committed on purpose. A directory ends in `/`. Pack paths are each pack's `ignore_paths`.
+ignore .claude/settings.local.json
 ignore .ai/run-context/
 ignore .ai/logs/
 ignore .ai/run-state.json
