@@ -37,6 +37,15 @@ audit_digest_path: "<relative path>"       # optional
 authoring_examples_path: "<relative path>" # optional; a directory, relative to the pack root
 branch_name:                               # optional
   pattern: "<expression>"
+requires:                                  # optional; see Declarations — either kind
+  - tool: <identifier>
+    probe: [<argv>, …]
+    remedy: "<what a human runs to fix it>"
+env:                                       # optional
+  - name: <VARIABLE_NAME>
+    source: "<where a human gets the value>"
+hosts: ["<host>", "*.<domain>", …]         # optional
+ignore_paths: ["<relative path>", …]       # optional
 reference_docs: "<https url>"              # optional; last
 ```
 
@@ -60,6 +69,11 @@ requires:                       # optional
   - tool: <identifier>
     probe: [<argv>, …]
     remedy: "<what a human runs to fix it>"
+env:                            # optional
+  - name: <VARIABLE_NAME>
+    source: "<where a human gets the value>"
+hosts: ["<host>", "*.<domain>", …]   # optional
+ignore_paths: ["<relative path>", …] # optional
 session_tools:                  # optional; last
   - tool: <exact tool name>
     remedy: "<what a human does to fix it>"
@@ -74,11 +88,13 @@ Fixed per kind, in order.
   an empty `artifacts` list is present on every result envelope rather than omitted.
   `onboarding_state_path`, `audit_findings_path` (D80) and `audit_digest_path` (G500) are the
   exceptions to "all required" — all three optional, and a pack may declare any subset of them,
-  including none. So is `authoring_examples_path` (D132), which follows them.
+  including none. So is `authoring_examples_path` (D132), which follows them. After `branch_name`
+  come the four optional declarations `requires`, `env`, `hosts`, `ignore_paths`, then
+  `reference_docs` last.
 - **provider** — `kind`, `role`, `operations`, `unsupported`, `scripts`, `text_conventions` for
-  the `tracker` role, `requires`, `session_tools`. The first four are required; `unsupported` may be
-  empty (`[]`) but must be present. `scripts`, `text_conventions`, `requires` and `session_tools`
-  are all optional.
+  the `tracker` role, `requires`, `env`, `hosts`, `ignore_paths`, `session_tools`. The first four are
+  required; `unsupported` may be empty (`[]`) but must be present. Every key after `unsupported` is
+  optional.
 
 ## The stage vocabulary
 
@@ -321,9 +337,9 @@ digraph route {
   (`acceptance_criteria_headings`). It lives with the tracker because a team that formats items
   differently changes its tracker pack, not its platform pack. `has_reproduction_url` needs no list
   here — any `http(s)` URL in the sanitized text sets it.
-- `requires` — optional. What this pack needs present on the machine that runs it: a tool, a
-  downloaded binary, anything selecting the pack does not by itself provide. Each entry declares
-  three things.
+- `requires` — optional, on either kind (see **Declarations — either kind**). What this pack needs
+  present on the machine that runs it: a tool, a downloaded binary, anything selecting the pack does
+  not by itself provide. Each entry declares three things.
   - `tool` — a non-empty identifier for what must be present. It names the thing, and it is what a
     report says is missing.
   - `probe` — how "present" is answered, as a **list of arguments, never a string**. An argument may
@@ -366,6 +382,40 @@ digraph route {
     declared tools and says they are checked at run time, since it cannot see the registry either.
     Pre-flight does not read this key.
 - Every skill named in `operations` must resolve to `<pack root>/skills/<skill name>/SKILL.md`.
+
+## Declarations — either kind
+
+Four optional keys say what a project must provide for a pack, in this fixed order: `requires`,
+`env`, `hosts`, `ignore_paths`. A platform pack declares them after `branch_name` and before
+`reference_docs`; a provider pack after `text_conventions` and before `session_tools`. Each is absent
+when the pack needs nothing of its kind, never present and empty.
+
+- `requires` — as under **Field rules — provider**, with the same shape and the same readers on a
+  platform pack.
+- `env` — the environment variables this pack's operations read. Each entry declares two things, and
+  nothing else:
+  - `name` — the variable's name, unquoted: upper-case letters, digits and `_`, starting with a
+    letter. Anything else in that place is refused, and the refusal never repeats what was written,
+    because a value written where a name belongs may be a credential.
+  - `source` — quoted text telling a human where to get the value.
+  - **A value is never declared** — no default, no example value. The value lives only where the
+    human puts it; a pack never reads, writes or creates the file that holds it. The core's `setup`
+    creates each declared name there as a placeholder for the human to fill.
+  - **Only the owning pack declares a variable.** A variable another pack's code also reads is
+    declared once, by the pack whose credential it is. Each name at most once per pack.
+- `hosts` — the network hosts this pack's operations reach, as a bracket list of double-quoted
+  entries, each a literal host name or `*.<domain>`: lower case, at least one dot, no scheme, port or
+  path — the form a sandbox network allowlist takes. A host that is a variable's value, different in
+  every project, is declared by its wildcard. Each host at most once.
+- `ignore_paths` — the project-relative paths this pack's operations write that must never be
+  committed, as a bracket list of double-quoted entries; a directory ends in `/`. No leading `/`, no
+  `..` segment, no glob character, backslash or space: what the ignore file hides and what delivery
+  excludes must be the same literal path. Each path at most once.
+
+**The core's own paths** are not a manifest key. `run-paths.txt` lists them, one per line:
+`ignore <path>` for a file a run writes and never commits, `commit <path>` for a project file
+committed on purpose. The two lists together — the core's and every configured pack's
+`ignore_paths` — are everything a project ignores for a run.
 
 ## Example — platform
 
@@ -423,6 +473,27 @@ scripts:
   render: "skills/render/scripts/render.cjs"
 ```
 
+A provider whose operations call a remote service with a token declares the variables, the host and
+the directory its operations write:
+
+```yaml
+kind: provider
+role: tracker
+operations:
+  fetch_item: fetch
+  post_note: note
+  attach_file: attach
+  list_types: list
+unsupported: []
+env:
+  - name: EXAMPLE_SITE
+    source: "the host name of your example site"
+  - name: EXAMPLE_API_TOKEN
+    source: "your example account's settings, API tokens"
+hosts: ["*.example.test"]
+ignore_paths: [".ai/tracker/"]
+```
+
 ## Reference, not restatement
 
 A skill or script that reads a pack manifest references this file with one line rather than
@@ -451,9 +522,10 @@ keys coexist with an otherwise-conformant manifest, and in that order.
 `onboarding-path-traversal`, `onboarding-path-empty`, `authoring-examples-path-absolute`,
 `authoring-examples-path-traversal` and `authoring-examples-path-not-string`.
 `fixtures/pack-manifest/provider-invalid/` holds `missing-operation`, `unknown-operation`,
-`dangling-skill` and `authoring-examples-path`. `scripts`'s own rejection cases
-(unknown operation, dangling script, present-but-empty) are inline in the validator's test suite,
-alongside the remaining shape errors that fit a single block.
+`dangling-skill`, `authoring-examples-path` and `env-value-as-name` (a token-shaped value where a
+variable name belongs). `scripts`'s own rejection cases (unknown operation, dangling script,
+present-but-empty) and those of `env`, `hosts` and `ignore_paths` are inline in the validator's test
+suite, alongside the remaining shape errors that fit a single block.
 
 `fixtures/session-tools/` holds the session-tools comparison's inputs: `one-tool`, `two-tools` (after a
 `requires:` block, which the comparison never reads), `none-declared`, and `no-remedy` (malformed).
@@ -477,4 +549,6 @@ registry for (`tool: <name>`, each once) or `none declared`; `lib/check-session-
 bash plugins/agentic-core/shared/lib/validate-pack-manifest.test.sh
 bash plugins/agentic-core/shared/lib/evaluate-stage-conditions.test.sh
 bash plugins/agentic-core/shared/lib/check-session-tools.test.sh
+bash plugins/agentic-core/shared/lib/check-requires.test.sh
+bash plugins/agentic-core/shared/lib/run-paths.test.sh
 ```
