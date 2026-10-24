@@ -61,7 +61,7 @@ trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
 echo "=== write-provider-packs.sh tests ==="
 
-echo "[insert] existing file with commands/paths but no packs: block gets one inserted before commands:"
+echo "[insert] existing file with commands/paths but no packs: block gets all five roles inserted before commands:"
 CFG="$TMPDIR_TEST/existing.yaml"
 cat > "$CFG" <<'EOF'
 version: 1
@@ -76,15 +76,17 @@ paths:
   spec_dir: ".ai/specs"
   preview: "http://localhost:3000/preview"
 EOF
-OUT=$(bash "$WRITER" "$CFG" "jira" "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$CFG" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "insert succeeds (exit 0)" 0 $ST "$OUT"
 assert_contains "reports updated, not written" "updated" "$OUT"
 EXPECTED_INSERTED='version: 1
 
 packs:
-  tracker: jira
-  scm: github
+  platform: platform-pack
+  tracker: tracker-pack
+  scm: scm-pack
   design: design-pack
+  browser: browser-pack
 
 commands:
   lint: "run lint"
@@ -97,16 +99,10 @@ paths:
   preview: "http://localhost:3000/preview"'
 assert_file_equals "packs: block inserted right after version, rest untouched" "$EXPECTED_INSERTED" "$CFG"
 
-echo "[cross-check] tracker/scm/design inserted next to platform/browser (added by hand) plus limits passes validate-project-config.sh"
+echo "[cross-check] the written packs block plus limits and trigger passes validate-project-config.sh"
 COMBINED="$TMPDIR_TEST/combined.yaml"
 {
-  sed -n '/^version:/,/^packs:$/p' "$CFG" | sed '$d'
-  echo "packs:"
-  echo "  platform: example-platform"
-  sed -n '/^  tracker:/,/^  design:/p' "$CFG"
-  echo "  browser: example-browser"
-  echo
-  sed -n '/^commands:$/,$p' "$CFG"
+  cat "$CFG"
   echo
   echo "limits:"
   echo "  questions_per_run: 3"
@@ -122,27 +118,31 @@ assert_exit "spliced file passes validate-project-config.sh (exit 0)" 0 $ST "$OU
 
 echo "[create] fresh file gets version + packs, nothing else"
 FRESH="$TMPDIR_TEST/fresh.yaml"
-OUT=$(bash "$WRITER" "$FRESH" "jira" "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$FRESH" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "fresh create succeeds (exit 0)" 0 $ST "$OUT"
 assert_contains "reports the path written" "$FRESH" "$OUT"
 EXPECTED_FRESH='version: 1
 
 packs:
-  tracker: jira
-  scm: github
-  design: design-pack'
+  platform: platform-pack
+  tracker: tracker-pack
+  scm: scm-pack
+  design: design-pack
+  browser: browser-pack'
 assert_file_equals "fresh file matches expected shape exactly" "$EXPECTED_FRESH" "$FRESH"
 
-echo "[update] re-running on a file that already has a packs: block updates values in place, no duplication"
-OUT=$(bash "$WRITER" "$CFG" "jira-cloud" "github-enterprise" "design-pack-2" 2>&1); ST=$?
+echo "[update] re-running on a file that already has a five-role packs: block updates values in place, no duplication"
+OUT=$(bash "$WRITER" "$CFG" "platform-2" "tracker-2" "scm-2" "design-pack-2" "browser-2" 2>&1); ST=$?
 assert_exit "update succeeds (exit 0)" 0 $ST "$OUT"
 assert_contains "reports updated" "updated" "$OUT"
 EXPECTED_UPDATED='version: 1
 
 packs:
-  tracker: jira-cloud
-  scm: github-enterprise
+  platform: platform-2
+  tracker: tracker-2
+  scm: scm-2
   design: design-pack-2
+  browser: browser-2
 
 commands:
   lint: "run lint"
@@ -155,53 +155,41 @@ paths:
   preview: "http://localhost:3000/preview"'
 assert_file_equals "packs: values updated in place, no dup blocks" "$EXPECTED_UPDATED" "$CFG"
 
-echo "[reject] empty tracker name"
-CFG2="$TMPDIR_TEST/empty-tracker.yaml"
-OUT=$(bash "$WRITER" "$CFG2" "" "github" "design-pack" 2>&1); ST=$?
-assert_exit "empty tracker rejected (exit 1)" 1 $ST "$OUT"
-assert_contains "reason names tracker" "tracker" "$OUT"
-if [[ -f "$CFG2" ]]; then
-  FAIL=$((FAIL + 1))
-  echo "  FAIL: no file written on rejection"
-else
-  PASS=$((PASS + 1))
-  echo "  ok: no file written on rejection"
-fi
-
-echo "[reject] empty scm name"
-CFG3="$TMPDIR_TEST/empty-scm.yaml"
-OUT=$(bash "$WRITER" "$CFG3" "jira" "" "design-pack" 2>&1); ST=$?
-assert_exit "empty scm rejected (exit 1)" 1 $ST "$OUT"
-assert_contains "reason names scm" "scm" "$OUT"
-
-echo "[reject] empty design name"
-CFG3B="$TMPDIR_TEST/empty-design.yaml"
-OUT=$(bash "$WRITER" "$CFG3B" "jira" "github" "" 2>&1); ST=$?
-assert_exit "empty design rejected (exit 1)" 1 $ST "$OUT"
-assert_contains "reason names design" "packs.design is empty" "$OUT"
-if [[ -f "$CFG3B" ]]; then
-  FAIL=$((FAIL + 1))
-  echo "  FAIL: no file written when design is empty"
-else
-  PASS=$((PASS + 1))
-  echo "  ok: no file written when design is empty"
-fi
+for role in platform tracker scm design browser; do
+  echo "[reject] empty $role name"
+  CFGE="$TMPDIR_TEST/empty-$role.yaml"
+  args=("platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack")
+  case "$role" in
+    platform) args[0]="" ;; tracker) args[1]="" ;; scm) args[2]="" ;; design) args[3]="" ;; browser) args[4]="" ;;
+  esac
+  OUT=$(bash "$WRITER" "$CFGE" "${args[@]}" 2>&1); ST=$?
+  assert_exit "empty $role rejected (exit 1)" 1 $ST "$OUT"
+  assert_contains "reason names $role" "packs.$role is empty" "$OUT"
+  if [[ -f "$CFGE" ]]; then
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: no file written when $role is empty"
+  else
+    PASS=$((PASS + 1))
+    echo "  ok: no file written when $role is empty"
+  fi
+done
 
 echo "[reject] a value containing a double quote"
 CFG4="$TMPDIR_TEST/bad-quote.yaml"
-OUT=$(bash "$WRITER" "$CFG4" 'jira"cloud' "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$CFG4" "platform-pack" 'tracker"2' "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "quote-containing value rejected (exit 1)" 1 $ST "$OUT"
 
 echo "[usage] wrong argument count"
-OUT=$(bash "$WRITER" "$TMPDIR_TEST/x.yaml" "jira" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$TMPDIR_TEST/x.yaml" "tracker-pack" 2>&1); ST=$?
 assert_exit "two arguments -> usage error (exit 2)" 2 $ST "$OUT"
-OUT=$(bash "$WRITER" "$TMPDIR_TEST/x.yaml" "jira" "github" 2>&1); ST=$?
-assert_exit "the old three-argument form -> usage error (exit 2)" 2 $ST "$OUT"
-assert_contains "usage line names the design argument" "<design>" "$OUT"
+OUT=$(bash "$WRITER" "$TMPDIR_TEST/x.yaml" "tracker-pack" "scm-pack" "design-pack" 2>&1); ST=$?
+assert_exit "the old four-argument form -> usage error (exit 2)" 2 $ST "$OUT"
+assert_contains "usage line names the platform argument" "<platform>" "$OUT"
+assert_contains "usage line names the browser argument" "<browser>" "$OUT"
 
 echo "[create] parent directory does not exist yet — script creates it"
 CFG5="$TMPDIR_TEST/nested/dir/config.yaml"
-OUT=$(bash "$WRITER" "$CFG5" "jira" "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$CFG5" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "create under a missing parent directory succeeds (exit 0)" 0 $ST "$OUT"
 if [[ -f "$CFG5" ]]; then
   PASS=$((PASS + 1))
@@ -211,30 +199,29 @@ else
   echo "  FAIL: file was not created under the newly created parent directory"
 fi
 
-echo "[upgrade] a packs: block written before this script grew its third sub-key gains design, in place"
-CFG_OLD="$TMPDIR_TEST/old-shape.yaml"
-cat > "$CFG_OLD" <<'EOF'
-version: 1
+for shape in two three; do
+  echo "[upgrade] a packs: block written by an earlier version ($shape provider roles) becomes the five-role block, in place"
+  CFG_OLD="$TMPDIR_TEST/old-shape-$shape.yaml"
+  {
+    printf 'version: 1\n\npacks:\n  tracker: tracker-pack\n  scm: scm-pack\n'
+    [[ "$shape" == three ]] && printf '  design: design-pack\n'
+    printf '\ncommands:\n  lint: ""\n'
+  } > "$CFG_OLD"
+  OUT=$(bash "$WRITER" "$CFG_OLD" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
+  assert_exit "old $shape-role block accepted (exit 0)" 0 $ST "$OUT"
+  EXPECTED_UPGRADED='version: 1
 
 packs:
-  tracker: jira
-  scm: github
-
-commands:
-  lint: ""
-EOF
-OUT=$(bash "$WRITER" "$CFG_OLD" "jira" "github" "design-pack" 2>&1); ST=$?
-assert_exit "old two-sub-key block accepted (exit 0)" 0 $ST "$OUT"
-EXPECTED_UPGRADED='version: 1
-
-packs:
-  tracker: jira
-  scm: github
+  platform: platform-pack
+  tracker: tracker-pack
+  scm: scm-pack
   design: design-pack
+  browser: browser-pack
 
 commands:
   lint: ""'
-assert_file_equals "design appended to the block, nothing duplicated" "$EXPECTED_UPGRADED" "$CFG_OLD"
+  assert_file_equals "old $shape-role block replaced, nothing duplicated" "$EXPECTED_UPGRADED" "$CFG_OLD"
+done
 
 echo "[reject] existing packs: block not in a shape this script wrote"
 CFG6="$TMPDIR_TEST/malformed-packs.yaml"
@@ -242,23 +229,13 @@ cat > "$CFG6" <<'EOF'
 version: 1
 
 packs:
-  platform: example-platform
-  tracker: example-tracker
   scm: example-scm
-  design: none
-  browser: example-browser
+  tracker: example-tracker
 
 commands:
   lint: ""
-  test: ""
-  build: ""
-  serve: ""
-
-paths:
-  spec_dir: "specs"
-  preview: "http://localhost:3000/preview"
 EOF
-OUT=$(bash "$WRITER" "$CFG6" "jira" "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$CFG6" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "malformed existing packs: block rejected (exit 1)" 1 $ST "$OUT"
 
 echo "[reject] no 'version:' line to anchor an insertion against"
@@ -267,7 +244,7 @@ cat > "$CFG7" <<'EOF'
 commands:
   lint: ""
 EOF
-OUT=$(bash "$WRITER" "$CFG7" "jira" "github" "design-pack" 2>&1); ST=$?
+OUT=$(bash "$WRITER" "$CFG7" "platform-pack" "tracker-pack" "scm-pack" "design-pack" "browser-pack" 2>&1); ST=$?
 assert_exit "missing version: line rejected (exit 1)" 1 $ST "$OUT"
 
 echo

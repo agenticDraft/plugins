@@ -113,4 +113,5 @@ branch_name:
   pattern: "^[a-z0-9/-]+$"
 hosts: ["*.aem.page"]
 ignore_paths: ["drafts/"]
+config_derivation: "shared/scripts/derive-config.sh"
 reference_docs: "https://developer.mozilla.org/en-US/"

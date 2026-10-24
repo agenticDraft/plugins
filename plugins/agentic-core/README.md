@@ -54,10 +54,12 @@ the core can be pointed at.
 5. **Exactly three terminal states.** `delivered` when `deliver` returns `pass`; `blocked` on an
    unanswered question, an exhausted budget, a pre-flight failure or a dirty tree at a fresh
    start; `failed` on a stage's own `fail` or on a contract violation. `warn` is never terminal.
-6. **Configuration is written once.** `setup` detects the project's commands and paths, confirms
-   them, and writes them into `.ai/project-config.yaml`, which holds six top-level keys:
-   `version`, `packs`, `commands`, `paths`, `limits`, `trigger`. `limits` and `trigger` are human
-   decisions that `setup` never writes. Every pack reads that one file.
+6. **Configuration is written once.** `setup` detects the project's commands and preview, picks a
+   pack for every role from the installed packs, has the platform pack derive its own values from
+   the git remote, confirms everything once, and writes `.ai/project-config.yaml`: `version`,
+   `packs`, `commands`, `paths`, `limits`, `trigger`, and the optional `branch_name` and
+   `platform`. The trigger identity is a placeholder the human fills by hand; `setup` runs the
+   config validator once none is left. Every pack reads that one file.
 7. **Every decision that can be a script is a script.** The shared library holds the validators,
    writers and checkers the driver and the packs call; each has a `.test.sh` beside it, and none
    involves a model.
@@ -137,7 +139,7 @@ its own answer file at fixed paths; which stages ran before it is the driver's k
 
 | Skill       | Invocation                                            | What it does                                                                                  |
 | ----------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `setup`     | `/agentic-core:setup`                                 | Detects commands and paths, proposes knowledge sources, picks provider packs with you, generates a platform pack from an interview. Writes `.ai/project-config.yaml`. Never installs. |
+| `setup`     | `/agentic-core:setup`                                 | Detects commands and the preview, proposes knowledge sources, picks every pack role from the installed packs, derives the platform's values from the remote, writes a complete `.ai/project-config.yaml` and validates it. Generates a platform pack from an interview only when none is installed. Never installs; never asks for a credential or identifier. |
 | `health`    | `/agentic-core:health`                                | Reports what is loaded, which pack each role resolves to, and each pack's declared preconditions with the remedy the pack states. Read-only. |
 | `run-route` | `/agentic-core:run-route <work item id or URL> [autonomous]` | Drives one route to a terminal state. The only component allowed to spawn a stage adapter. |
 
@@ -153,7 +155,7 @@ under `shared/lib/` make the contracts executable.
 | What a stage returns  | `result-envelope.md`, `subagent-outcome.md`                     | `emit-envelope.sh`, `validate-result-envelope.sh`             |
 | How a stage is run    | `stage-runner.md`, `question-protocol.md`, `terminal-states.md` | `run-stage.sh`, `handle-question.sh`, `resolve-terminal-state.sh` |
 | What a pack declares  | `pack-manifest.md`, `readiness-criteria.md`                     | `validate-pack-manifest.sh`, `check-requires.sh`, `evaluate-stage-conditions.sh` |
-| Project configuration | `project-config.md`, `pre-flight.md`                            | `validate-project-config.sh`, `check-preflight.sh`, `write-detected-config.sh` |
+| Project configuration | `project-config.md`, `pre-flight.md`, `personal-values.md`      | `validate-project-config.sh`, `check-preflight.sh`, `write-detected-config.sh`, `write-provider-packs.sh`, `write-run-config.sh`, `list-pack-candidates.sh`, `derive-project-values.sh`, `find-placeholders.sh` |
 | Run bookkeeping       | `run-state.md`, `progress-output.md`, `orchestration-flag.md`   | `write-run-state.sh`, `print-progress-line.sh`, `print-status-table.sh` |
 | Gates                 | `gate-contract.md`, `plan-criteria.md`, `publish-criteria.md`   | `check-plan-criteria.sh`, `check-publish-criteria.sh`, `check-tree-unchanged.sh` |
 | Design onboarding     | `design-manifest.md`, `breakpoint-thresholds.md`, `audit-taxonomy.md`, `convention-record.md` | `write-design-manifest.sh`, `derive-breakpoints.sh`, `classify-severity.sh` |
@@ -293,8 +295,8 @@ agentic-core/
 - **Nothing runs without packs.** The core ships no stage and no operation; it is a driver, a
   configurator and a diagnostic. A route needs a platform pack and a provider pack for every
   role the project config names.
-- **`setup` does not choose the browser pack.** Its own description says so; `packs.browser` is
-  set by hand.
+- **`setup` stops on a role no installed pack serves.** It never writes `none` or a pack that is
+  not installed; install one, or write the key by hand.
 - **Pre-flight reads declarations only.** It never probes a process, so a tool missing from the
   machine is found by `health` or by the operation that needs it, not before the run starts.
 - **Run state goes stale at two hours.** A `.ai/run-state.json` older than that is deleted and

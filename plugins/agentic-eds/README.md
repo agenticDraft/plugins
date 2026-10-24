@@ -213,7 +213,7 @@ paths:
   preview: "http://localhost:3000/preview"
 ```
 
-**The offline test suites, this run:** 25 test files, every one exit 0.
+**The offline test suites, this run:** 36 test files, every one exit 0.
 
 ## Install
 
@@ -237,7 +237,11 @@ A project installs it by the `settings.json` in the [getting-started guide](../g
 
    This pack declares `"dependencies": ["agentic-core"]` in `.claude-plugin/plugin.json`.
 2. Configure the project with `/agentic-core:setup`, or write `.ai/project-config.yaml` as shown
-   above with `packs.platform: eds`.
+   above with `packs.platform: eds`. `setup` runs this pack's `config_derivation`
+   (`shared/scripts/derive-config.sh`) on the `origin` remote and writes the two values this pack
+   reads: `platform.preview_host_suffix` (`--<repo>--<owner>`, lower case) and
+   `branch_name.max_length` (63 minus the suffix's length). A remote whose owner or repository
+   name holds a character other than `a-z`, `0-9` or `-` is refused; write both keys by hand then.
 3. Onboard the design system once, if the project has one: `/agentic-eds:eds-adopt-design-system`, then
    `/agentic-eds:eds-audit-design-system`, then `/agentic-eds:eds-complete-design-onboarding`. `pack.yaml`
    declares `onboarding_state_path: styles/design-system.md` and

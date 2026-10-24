@@ -12,6 +12,22 @@ keep / re-detect / edit.
 `.ai/project-config.yaml` at the project root. Committed — nothing in it is a secret, and every
 teammate and every pack reads the same one file.
 
+## Who writes it
+
+`setup` writes every key; nothing is left for a hand edit except the values below.
+
+- `commands`, `paths.preview` — detected from the project (`lib/write-detected-config.sh`).
+  `paths.spec_dir` is always `.ai/specs`, never asked; an override is a hand edit.
+- `packs` — every role from the installed packs (`lib/list-pack-candidates.sh`,
+  `lib/write-provider-packs.sh`).
+- `limits`, `trigger.token` — defaults shown in `setup`'s confirm step: `3`, `3`, `"@agentic-run"`.
+  A re-run keeps the values already in the file.
+- `branch_name.max_length`, `platform.<key>` — derived by the configured platform pack's
+  `config_derivation` script from the repository's `origin` remote (`lib/derive-project-values.sh`).
+  Absent when the pack declares none or the project has no `origin`.
+- `trigger.allowed_identities` — written as a placeholder the human fills (`personal-values.md`).
+  `lib/write-run-config.sh` writes the last four sections and carries filled identities forward.
+
 ## Format
 
 ```yaml
