@@ -622,6 +622,21 @@ if [[ "$kind" == "platform" ]]; then
   # --- requires, env, hosts, ignore_paths (validators 18 and 26, D137) ------
   check_declarations
 
+  # --- config_derivation (validator 27, D138) --------------------------------
+  # Optional. A script inside this pack that derives project config values
+  # from the repository's remote. Resolved and checked as a scripts: path is:
+  # relative, no '..' segment, the file exists. What it derives is the pack's.
+  if [[ "${LINES[cursor]:-}" =~ ^config_derivation:\ (.*)$ ]]; then
+    value="${BASH_REMATCH[1]}"
+    [[ "$value" =~ ^\"(.*)\"$ ]] \
+      || fail "config_derivation must be one double-quoted path relative to the pack root, got '$value'"
+    derivation_path="${BASH_REMATCH[1]}"
+    validate_declared_path "config_derivation" "$derivation_path"
+    [[ -f "$PACK_ROOT/$derivation_path" ]] \
+      || fail "config_derivation names a script that does not exist: '$derivation_path'"
+    cursor=$((cursor + 1))
+  fi
+
   # --- reference_docs (validator 23, D117) ----------------------------------
   # Optional, the last platform key. The platform's official reference, read by
   # a stage or the authoring skill before deciding a question no project rule
@@ -878,6 +893,10 @@ if [[ "$kind" == "provider" ]]; then
     done
     [[ ${#ST_NAMES[@]} -eq 0 ]] \
       && fail "'session_tools:' is present but declares no entries — omit the key instead"
+  fi
+
+  if [[ "${LINES[cursor]:-}" =~ ^config_derivation: ]]; then
+    fail "config_derivation belongs to a platform pack, not a provider pack"
   fi
 
   if (( cursor < n )); then

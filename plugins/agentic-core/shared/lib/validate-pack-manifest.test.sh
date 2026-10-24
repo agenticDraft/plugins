@@ -1199,6 +1199,46 @@ echo "[usage] file not found"
 OUT=$(bash "$VALIDATOR" "$FIXDIR/does-not-exist/pack.yaml" 2>&1); ST=$?
 assert_exit "missing file -> usage error (exit 2)" 2 $ST "$OUT"
 
+# --- config_derivation (validator 27, D138) ---------------------------------
+
+echo "[validator 27] config_derivation — a platform pack's derivation script (D138)"
+derivation_case() {
+  local case_dir="$BN_WORK/$1"; shift
+  cp -R "$FIXDIR/platform-valid" "$case_dir"
+  mkdir -p "$case_dir/scripts"
+  printf '#!/usr/bin/env bash\n' > "$case_dir/scripts/derive.sh"
+  printf '%s\n' "$@" >> "$case_dir/pack.yaml"
+  echo "$case_dir/pack.yaml"
+}
+M=$(derivation_case cd-ordered 'ignore_paths: ["out/"]' 'config_derivation: "scripts/derive.sh"' 'reference_docs: "https://docs.example.org/"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "after ignore_paths, before reference_docs, accepted" 0 $ST "$OUT"
+M=$(derivation_case cd-alone 'config_derivation: "scripts/derive.sh"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "as the only optional key accepted" 0 $ST "$OUT"
+M=$(derivation_case cd-missing 'config_derivation: "scripts/absent.sh"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "a script that does not exist rejected" 1 $ST "$OUT"
+assert_contains "says the script is missing" "config_derivation names a script that does not exist" "$OUT"
+for bad in '"../derive.sh"' '"/abs/derive.sh"' 'scripts/derive.sh' '""'; do
+  M=$(derivation_case "cd-bad-$RANDOM" "config_derivation: $bad")
+  OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+  assert_exit "config_derivation $bad rejected" 1 $ST "$OUT"
+  assert_contains "config_derivation $bad → names the key" "config_derivation" "$OUT"
+done
+M=$(derivation_case cd-after-rd 'reference_docs: "https://docs.example.org/"' 'config_derivation: "scripts/derive.sh"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "after reference_docs rejected (reference_docs is last)" 1 $ST "$OUT"
+M=$(derivation_case cd-before-ip 'config_derivation: "scripts/derive.sh"' 'ignore_paths: ["out/"]')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "before ignore_paths rejected (fixed order)" 1 $ST "$OUT"
+PROV_CD="$BN_WORK/cd-provider"; mkdir -p "$PROV_CD"
+printf 'kind: provider\nrole: design\noperations: {}\nunsupported: [fetch_reference]\nconfig_derivation: "derive.sh"\n' > "$PROV_CD/pack.yaml"
+: > "$PROV_CD/derive.sh"
+OUT=$(bash "$VALIDATOR" "$PROV_CD/pack.yaml" 2>&1); ST=$?
+assert_exit "on a provider pack rejected" 1 $ST "$OUT"
+assert_contains "reason names the kind it belongs to" "config_derivation belongs to a platform pack, not a provider pack" "$OUT"
+
 echo
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 exit $(( FAIL > 0 ? 1 : 0 ))
