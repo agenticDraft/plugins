@@ -405,15 +405,20 @@ when the pack needs nothing of its kind, never present and empty.
 
 - `requires` — as under **Field rules — provider**, with the same shape and the same readers on a
   platform pack.
-- `env` — the environment variables this pack's operations read. Each entry declares two things, and
-  nothing else:
+- `env` — the environment variables this pack's operations read. Each entry declares two things, an
+  optional third, and nothing else:
   - `name` — the variable's name, unquoted: upper-case letters, digits and `_`, starting with a
     letter. Anything else in that place is refused, and the refusal never repeats what was written,
     because a value written where a name belongs may be a credential.
   - `source` — quoted text telling a human where to get the value.
+  - `login_alternative` — optional, after `source`: quoted text naming a login that replaces the
+    variable. Declare it when the pack's tool prefers the variable to a login, so any value in it —
+    a placeholder included — overrides the login. `setup` writes no key for such a variable and
+    names the two as alternatives.
   - **A value is never declared** — no default, no example value. The value lives only where the
     human puts it; a pack never reads, writes or creates the file that holds it. The core's `setup`
-    creates each declared name there as a placeholder for the human to fill.
+    creates each declared name there as a placeholder for the human to fill, unless it declares a
+    `login_alternative`.
   - **Only the owning pack declares a variable.** A variable another pack's code also reads is
     declared once, by the pack whose credential it is. Each name at most once per pack.
 - `hosts` — the network hosts this pack's operations reach, as a bracket list of double-quoted
@@ -427,8 +432,14 @@ when the pack needs nothing of its kind, never present and empty.
 
 **The core's own paths** are not a manifest key. `run-paths.txt` lists them, one per line:
 `ignore <path>` for a file a run writes and never commits, `commit <path>` for a project file
-committed on purpose. The two lists together — the core's and every configured pack's
-`ignore_paths` — are everything a project ignores for a run.
+committed on purpose; the credentials file `setup` creates is among the `ignore` lines. The two lists
+together — the core's and every configured pack's `ignore_paths` — are everything a project ignores
+for a run.
+
+**Who reads them in `setup`.** `lib/collect-pack-declarations.sh` reads these keys from the packs the
+project config names, and `run-paths.txt`; `lib/write-credential-placeholders.sh`,
+`lib/write-sandbox-hosts.sh` and `lib/write-ignore-rules.sh` each merge one kind into the project,
+add only; `lib/name-files-to-commit.sh` names what the human commits.
 
 ## Example — platform
 
@@ -564,4 +575,10 @@ bash plugins/agentic-core/shared/lib/evaluate-stage-conditions.test.sh
 bash plugins/agentic-core/shared/lib/check-session-tools.test.sh
 bash plugins/agentic-core/shared/lib/check-requires.test.sh
 bash plugins/agentic-core/shared/lib/run-paths.test.sh
+bash plugins/agentic-core/shared/lib/collect-pack-declarations.test.sh
+bash plugins/agentic-core/shared/lib/write-credential-placeholders.test.sh
+bash plugins/agentic-core/shared/lib/write-sandbox-hosts.test.sh
+bash plugins/agentic-core/shared/lib/write-ignore-rules.test.sh
+bash plugins/agentic-core/shared/lib/name-files-to-commit.test.sh
+bash plugins/agentic-core/shared/lib/setup-project-files.test.sh
 ```
