@@ -112,6 +112,19 @@ MERGE_BASE="$(git_root merge-base "$BASE_REF" HEAD 2>/dev/null)" || {
   exit 2
 }
 
+# A working path already committed on this branch cannot be left out: the
+# commit leaves out only what is not yet committed, and the push carries
+# every commit. Refused here rather than dropped from the review.
+if [[ -n "$EXCLUDE" ]]; then
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    if [[ -z "$(printf '%s\n' "$f" | working_filter)" ]]; then
+      echo "invalid: '$f' is a declared working path already committed on this branch — the push would carry it" >&2
+      exit 1
+    fi
+  done < <(git_root diff --name-only "$MERGE_BASE" HEAD -- 2>/dev/null)
+fi
+
 # --name-only against the merge base, not against HEAD alone, so this
 # reflects everything the branch introduces — committed and uncommitted —
 # not only what has been committed so far. Unioned with `ls-files
