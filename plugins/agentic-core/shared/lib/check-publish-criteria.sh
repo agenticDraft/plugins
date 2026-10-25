@@ -25,7 +25,11 @@
 # rules").
 #
 # Usage:
-#   check-publish-criteria.sh <project-root>
+#   check-publish-criteria.sh <project-root> [--exclude-file <working-paths file>]
+#
+# With --exclude-file, the run's declared working paths are not part of the
+# change (filter-working-paths.sh), so the gate reviews exactly what the
+# commit will carry; an absent file excludes nothing.
 #
 # Exit codes:
 #   0 — both structural criteria hold; "valid: publish (<n> files
@@ -43,12 +47,30 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 ROOT="${1:-}"
 
 if [[ -z "$ROOT" ]]; then
-  echo "usage: check-publish-criteria.sh <project-root>" >&2
+  echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2
   exit 2
 fi
+shift
+EXCLUDE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --exclude-file)
+      [[ $# -ge 2 && -n "$2" ]] || { echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2; exit 2; }
+      EXCLUDE="$2"; shift 2 ;;
+    *) echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2; exit 2 ;;
+  esac
+done
+
+# Drops the run's declared working paths from stdin; passes everything when
+# no file was given.
+working_filter() {
+  if [[ -n "$EXCLUDE" ]]; then bash "$SCRIPT_DIR/filter-working-paths.sh" "$EXCLUDE"; else cat; fi
+}
 
 if [[ ! -d "$ROOT" ]]; then
   echo "invalid: project root not found: $ROOT" >&2
@@ -101,13 +123,13 @@ CHANGED_FILES=()
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
   CHANGED_FILES+=("$line")
-done < <(git_root diff --name-only "$MERGE_BASE" -- 2>/dev/null)
+done < <(git_root diff --name-only "$MERGE_BASE" -- 2>/dev/null | working_filter)
 
 UNTRACKED_FILES=()
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
   UNTRACKED_FILES+=("$line")
-done < <(git_root ls-files --others --exclude-standard 2>/dev/null)
+done < <(git_root ls-files --others --exclude-standard 2>/dev/null | working_filter)
 
 ALL_FILES=("${CHANGED_FILES[@]+"${CHANGED_FILES[@]}"}" "${UNTRACKED_FILES[@]+"${UNTRACKED_FILES[@]}"}")
 

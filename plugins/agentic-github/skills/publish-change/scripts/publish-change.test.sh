@@ -97,6 +97,42 @@ else
   bad "eds-1 -> pass, pushed to origin" "exit $ST" "output: $OUT"
 fi
 
+# with_template <name> — a fresh repository whose pull request template is
+# committed, on a working branch of its own. Echoes the repo path.
+with_template() {
+  local repo
+  repo="$(fresh "$1")"
+  (
+    cd "$repo" || exit 1
+    mkdir -p .github
+    printf '## Summary\n\n## Issue\nFix #<issue-id>\n' > .github/pull_request_template.md
+    git add .github && git commit -q -m "template"
+    git checkout -q -b eds-2
+  ) >/dev/null 2>&1
+  echo "$repo"
+}
+
+echo "[template] a body that leaves the template unfilled is refused, nothing pushed"
+REPO="$(with_template tpl-unfilled)"
+OUT="$(cd "$REPO" && bash "$SCRIPT" eds-2 "A title" "$WORK/body.md" 2>&1)"; ST=$?
+if [[ "$OUT" == *"verdict: fail"* && "$OUT" == *"pull request template"* && "$OUT" == *"error_class: VALIDATION"* \
+      && "$ST" == 0 && -z "$(remote_sha tpl-unfilled eds-2)" ]]; then
+  ok "unfilled -> fail VALIDATION, exit 0, nothing pushed"
+else
+  bad "unfilled -> fail VALIDATION, exit 0, nothing pushed" "exit $ST" "output: $OUT"
+fi
+
+echo "[template] a body that fills every heading and placeholder is published"
+REPO="$(with_template tpl-filled)"
+printf '## Summary\nEmpty cells keep their height.\n\n## Issue\nEmpty: the item is EX-2 in the tracker.\n' > "$WORK/filled.md"
+OUT="$(cd "$REPO" && bash "$SCRIPT" eds-2 "A title" "$WORK/filled.md" 2>&1)"; ST=$?
+LOCAL="$(cd "$REPO" && git rev-parse eds-2)"
+if [[ "$OUT" == *"verdict: pass"* && "$ST" == 0 && "$(remote_sha tpl-filled eds-2)" == "$LOCAL" ]]; then
+  ok "filled -> pass, pushed"
+else
+  bad "filled -> pass, pushed" "exit $ST" "output: $OUT"
+fi
+
 echo "[usage] no argument"
 OUT="$(bash "$SCRIPT" 2>&1)"; ST=$?
 if [[ "$ST" == 2 ]]; then ok "no arg -> exit 2"; else bad "no arg -> exit 2" "got exit $ST"; fi

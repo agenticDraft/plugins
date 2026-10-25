@@ -10,7 +10,7 @@ description: The three terminal states a run can end in — delivered, blocked, 
 | State       | Cause                                                          | Required output                                    |
 | ----------- | --------------------------------------------------------------- | --------------------------------------------------- |
 | `delivered` | `deliver` returned `pass`                                    | The status table, and the published location.      |
-| `blocked`   | Question unanswered, budget exhausted, a pre-flight failure, a dirty tree at a fresh start, or an item whose work is already on the base branch | What is missing, and where it was recorded. |
+| `blocked`   | Question unanswered, budget exhausted, a pre-flight failure, a dirty tree at a fresh start, an item whose work is already on the base branch, an environment fault, or a tree changed while a question was open | What is missing, and where it was recorded. |
 | `failed`    | A stage returned `fail`, or a contract violation             | The failing stage, and its summary.                |
 
 **Never does:** decide *which* state a run ends in — that decision is already made by
@@ -36,7 +36,10 @@ inventing a fourth one:
   it (`lib/check-item-satisfied.sh`) and ends the run here with a note on the item, and the publish
   gate's empty-change outcome (`publish-criteria.md`, criterion 1) is a `question` whose unattended
   write-back ends here the same way. Nothing the run did was wrong in either case; a person
-  decides whether the item is done or what is still missing.
+  decides whether the item is done or what is still missing. `stage-runner.md`'s own
+  `terminate-blocked` — a stage's `fail` or `question` carrying `error_class: TRANSIENT` or
+  `PERMANENT` — ends here with the stage's remedy as what is missing, and so does a tree that
+  changed while a question was open (`question-protocol.md`), every changed path named.
 - **`failed`** — `stage-runner.md`'s `terminate-failed` (the stage's own `fail` verdict) or
   `terminate-contract-violation` (an unresolvable stage id, or an envelope that fails validation).
   Both end the run `failed`; only the report to a human distinguishes which one happened —

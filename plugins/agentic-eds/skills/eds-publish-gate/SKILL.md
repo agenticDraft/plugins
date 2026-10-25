@@ -149,10 +149,13 @@ isolated checkout. Read everything else — this stage's own tracked source, `.a
 Run:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/core/lib/check-publish-criteria.sh <project root>
+bash ${CLAUDE_PLUGIN_ROOT}/core/lib/check-publish-criteria.sh <project root> \
+  --exclude-file <project root>/.ai/run-context/working-paths.txt
 ```
 
-Record its exit code and its stderr. This answers criteria 1 and 2 — is there a change to review,
+The file lists the run's working paths (this pack's `drafts/` fixture among them), which `deliver`
+never commits; leaving them out here means this gate reviews exactly what the commit will carry. An
+absent file excludes nothing. Record its exit code and its stderr. This answers criteria 1 and 2 — is there a change to review,
 does it avoid every path the project marked never-tracked — with no model involved, which is why it
 runs before any reviewing starts.
 
@@ -204,6 +207,9 @@ BASE=$(git --git-dir=<project root>/.git symbolic-ref refs/remotes/origin/HEAD)
 MERGE_BASE=$(git --git-dir=<project root>/.git merge-base "${BASE#refs/remotes/}" HEAD)
 git --git-dir=<project root>/.git --work-tree=<project root> diff "$MERGE_BASE" --
 ```
+
+A path the working-paths file lists is not part of the change: skip its hunks and its untracked
+files, and never judge them under criterion 3 or 4 — `deliver` leaves them out of the commit.
 
 This is the full patch, not just the file list the checker printed a count of — committed and
 uncommitted changes alike, because `implement` does not commit what it writes and nothing before

@@ -15,6 +15,11 @@
 #   0 — decision: continue-warn      (verdict: warn; the warning is reported, not dropped)
 #   3 — decision: terminate-failed   (verdict: fail — the stage's own judgment, not a
 #                                      contract violation)
+#   4 — decision: terminate-blocked  (verdict: fail or question carrying error_class
+#                                      TRANSIENT or PERMANENT — the environment, not the
+#                                      request, failed; then "remedy: <text>": the
+#                                      envelope's blocker for a question, its summary
+#                                      for a fail). Never handed to the question protocol.
 #   1 — decision: terminate-contract-violation ("invalid: <reason>" on stderr — an
 #                                      unresolvable stage id, or an envelope that fails
 #                                      shared/result-envelope.md's validator)
@@ -101,6 +106,27 @@ fi
 
 verdict="${ENVELOPE_OUT#verdict: }"
 echo "verdict: $verdict"
+
+# An environment fault (shared/error-handling.md: TRANSIENT and PERMANENT
+# describe the environment) ends the run blocked whatever the verdict, so no
+# question about it reaches a human and nothing is fixed in the run's tree.
+# Read from the `## Result` block only, which the validator just accepted.
+envelope_field() {
+  awk -v key="$1: " '
+    /^## Result[[:space:]]*$/ { inside = 1; next }
+    inside && index($0, key) == 1 { print substr($0, length(key) + 1); exit }
+  ' "$ENVELOPE"
+}
+if [[ "$verdict" == "fail" || "$verdict" == "question" ]]; then
+  error_class="$(envelope_field error_class)"
+  if [[ "$error_class" == "TRANSIENT" || "$error_class" == "PERMANENT" ]]; then
+    if [[ "$verdict" == "question" ]]; then remedy="$(envelope_field blocker)"; else remedy="$(envelope_field summary)"; fi
+    echo "error_class: $error_class"
+    echo "decision: terminate-blocked"
+    echo "remedy: $remedy"
+    exit 4
+  fi
+fi
 
 case "$verdict" in
   pass)

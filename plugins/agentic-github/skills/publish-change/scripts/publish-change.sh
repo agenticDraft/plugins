@@ -80,6 +80,28 @@ if [[ "$BRANCH" == "$BASE" ]]; then
   envelope_fail "refusing to publish ${BRANCH}: it is the base branch of the change."
 fi
 
+# The repository's pull request template, when it has one, must be filled
+# by the body before anything is pushed: the skill fills it, and this is the
+# same check run again so an unfilled body never reaches a pull request.
+SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOP="$(git rev-parse --show-toplevel 2>/dev/null)"
+if TEMPLATE_LINE="$(bash "$SCRIPTS/find-pr-template.sh" "$TOP")"; then
+  TEMPLATE="$TOP/${TEMPLATE_LINE#template: }"
+  if ! UNFILLED="$(bash "$SCRIPTS/check-pr-body.sh" "$TEMPLATE" "$BODY_FILE")"; then
+    # The first problem only, cut so the summary stays inside the envelope's cap.
+    UNFILLED="${UNFILLED%%$'\n'*}"; UNFILLED="${UNFILLED:0:120}"
+    cat <<RESULT
+## Result
+verdict: fail
+summary: The body does not fill the repository's pull request template: ${UNFILLED}.
+artifacts: []
+next_action: none
+error_class: VALIDATION
+RESULT
+    exit 0
+  fi
+fi
+
 # No upstream: it is written to the repository's config, which a sandboxed
 # caller cannot write, and nothing downstream reads it.
 if ! git push origin "$BRANCH" --quiet 2>/dev/null; then

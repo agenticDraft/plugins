@@ -38,9 +38,15 @@ Every stage produces exactly one of these outcomes:
 | `continue-warn`               | `verdict: warn`                 | Proceed to the next stage; the warning is recorded, not silently dropped. |
 | `terminate-failed`           | `verdict: fail`                 | The run ends `failed`. Not a contract violation — the stage ran, evaluated its own work, and reported failure. |
 | `terminate-contract-violation` | an unresolvable stage id, or an envelope that fails validation | The run ends `failed`. The runner cannot tell what the stage did. |
+| `terminate-blocked`          | `verdict: fail` or `question` with `error_class: TRANSIENT` or `PERMANENT` | The run ends `blocked` with the stage's remedy (`blocker`, else `summary`). An environment fault: never asked mid-run, never re-invoked, never fixed inside the run. |
 
-`verdict: question` is read and reported like any other verdict, but what happens next — asking at
-the stage boundary, autonomous mode's write-back, the per-run budget — belongs to
+The class decides before the verdict does: an environment fault ends the run `blocked` whichever of
+`fail` or `question` the stage chose, so no human is asked to fix the environment while the run is
+open and no fix lands in tracked files the plan never named. `VALIDATION` and an absent class keep
+the verdict's own decision.
+
+Any other `verdict: question` is read and reported like any other verdict, but what happens next —
+asking at the stage boundary, autonomous mode's write-back, the per-run budget — belongs to
 `question-protocol.md`, a separate contract. This file does not define a decision for it.
 
 ## Anti-patterns
@@ -73,7 +79,8 @@ step (choosing the runtime action for the resolved adapter) sits above this scri
 skill drives a full route. It exits `0` and prints `decision: continue` or `decision:
 continue-warn`, `1` with `invalid: <reason>` on stderr and `decision: terminate-contract-violation`
 for a contract violation, `3` and `decision: terminate-failed` for a stage's own `fail` verdict,
-`2` for a usage error. Run its test suite with:
+`4` with `error_class:`, `decision: terminate-blocked` and `remedy: <text>` for an environment
+fault, `2` for a usage error. Run its test suite with:
 
 ```bash
 bash plugins/agentic-core/shared/lib/run-stage.test.sh

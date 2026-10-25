@@ -50,6 +50,11 @@ printf 'c\n' > "$ROOT/src/new/new.css"
 printf 'ignored\n' > "$ROOT/x"
 check "the union, sorted, without ignored files" "$(printf 'src/new/new.css\ntracked.txt')" "$(bash "$LIST" "$ROOT")"
 
+echo "[working paths] --exclude-file drops the run's declared working paths"
+printf '%s\n' 'src/new/' > "$TMP/working-paths.txt"
+check "the declared directory is gone, the rest kept" "tracked.txt" "$(bash "$LIST" "$ROOT" --exclude-file "$TMP/working-paths.txt")"
+check "an absent file drops nothing" "$(printf 'src/new/new.css\ntracked.txt')" "$(bash "$LIST" "$ROOT" --exclude-file "$TMP/absent.txt")"
+
 echo "[env] no origin/HEAD"
 git -C "$ROOT" remote set-head origin -d
 OUT="$(bash "$LIST" "$ROOT" 2>&1)"; ST=$?
