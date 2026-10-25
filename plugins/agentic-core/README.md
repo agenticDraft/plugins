@@ -154,7 +154,7 @@ under `shared/lib/` make the contracts executable.
 | --------------------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
 | What a stage returns  | `result-envelope.md`, `subagent-outcome.md`                     | `emit-envelope.sh`, `validate-result-envelope.sh`             |
 | How a stage is run    | `stage-runner.md`, `question-protocol.md`, `terminal-states.md` | `run-stage.sh`, `handle-question.sh`, `resolve-terminal-state.sh` |
-| What a pack declares  | `pack-manifest.md`, `readiness-criteria.md`                     | `validate-pack-manifest.sh`, `check-requires.sh`, `evaluate-stage-conditions.sh` |
+| What a pack declares  | `pack-manifest.md`, `readiness-criteria.md`                     | `validate-pack-manifest.sh`, `check-requires.sh`, `resolve-configured-packs.sh`, `check-pack-environment.sh`, `check-credentials.sh`, `evaluate-stage-conditions.sh` |
 | Project configuration | `project-config.md`, `pre-flight.md`, `personal-values.md`      | `validate-project-config.sh`, `check-preflight.sh`, `write-detected-config.sh`, `write-provider-packs.sh`, `write-run-config.sh`, `list-pack-candidates.sh`, `derive-project-values.sh`, `find-placeholders.sh`, `collect-pack-declarations.sh`, `write-credential-placeholders.sh`, `write-sandbox-hosts.sh`, `write-ignore-rules.sh`, `name-files-to-commit.sh` |
 | Run bookkeeping       | `run-state.md`, `progress-output.md`, `orchestration-flag.md`   | `write-run-state.sh`, `print-progress-line.sh`, `print-status-table.sh` |
 | Gates                 | `gate-contract.md`, `plan-criteria.md`, `publish-criteria.md`   | `check-plan-criteria.sh`, `check-publish-criteria.sh`, `check-tree-unchanged.sh` |
@@ -215,7 +215,7 @@ $ bash plugins/agentic-core/shared/lib/check-no-narrative.sh plugins/agentic-cor
 valid: no narrative (612 files scanned)
 ```
 
-**The test suites, this run:** 103 test files, every one exit 0.
+**The test suites, this run:** 106 test files, every one exit 0.
 
 ## Install
 
