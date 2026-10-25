@@ -13,3 +13,8 @@ env:
     login_alternative: "gh auth login"
 hosts: ["api.github.com"]
 ignore_paths: [".ai/scm/"]
+credential_checks:
+  - check: repository-access
+    probe: [bash, <pack>/scripts/check-repository-access.sh]
+    proves: "gh's login or GH_TOKEN reaches the repository origin names, and the account may push to it; not that a fine-grained token has Pull requests: write, which GitHub does not report"
+    remedy: "run gh auth login, or give GH_TOKEN this repository's owner as resource owner, access to this repository, and Contents and Pull requests: read and write (github.com/settings/personal-access-tokens)"

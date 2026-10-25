@@ -1,5 +1,5 @@
 ---
-description: Report what is loaded and whether every provider pack this project selected can actually run — which plugin is active and from where, then, per configured role, the pack bound to it and the result of probing each precondition that pack declares, and the session tools it declares (listed, never looked up — the run's driver checks those). Read-only: it reports, it never fixes, never installs, and never blocks a run.
+description: Report what is loaded and whether every pack this project selected can actually run — which plugin is active and from where, whether the project config validates, then, per configured role, the pack bound to it (resolved by its kind), the result of probing each precondition it declares, whether each variable it reads is set and each host it reaches is allowed, what its credential checks prove, and the session tools it declares (listed, never looked up — the run's driver checks those). Read-only: it reports, it never fixes, never installs, never prints a value, and never blocks a run.
 disable-model-invocation: true
 ---
 
@@ -27,21 +27,24 @@ Report, in a few short lines:
 Which copy is active matters more than it looks: a skill's body reaches a stage from the plugin
 cache, so a report that names the wrong root explains a whole class of otherwise baffling results.
 
-## 2. What each role is bound to
+## 2. Whether the project config is valid, and what each role is bound to
 
-Read `.ai/project-config.yaml` at the project root for its `packs:` block.
-
-- **No config, or no `packs:` block:** say so plainly and stop after step 1. A project that has not
+- **No `.ai/project-config.yaml`:** say so plainly and stop after step 1. A project that has not
   been set up has nothing to diagnose, and `setup` is what creates it — naming that is more useful
   than a list of absences.
-- **For each role named there,** resolve the pack the same way everything else does:
-  `bash ${CLAUDE_PLUGIN_ROOT}/shared/lib/resolve-plugin-root.sh <pack name>`. Exit `0` prints its root; the pack
-  resolved when `<root>/pack.yaml` exists and declares that `role`. Report, per role, the pack's
-  name and whether it resolved.
-- **A named pack that does not resolve** is the single most useful thing you can find here. Report
-  it as configured-but-not-resolved, naming the value in config and the line the resolver printed,
-  and keep going through the other roles — one unresolved role is not a reason to stop reporting
-  the rest. Never call it absent or not installed: the resolver cannot tell those apart.
+- **Validate it first:** `bash ${CLAUDE_PLUGIN_ROOT}/shared/lib/validate-project-config.sh .ai/project-config.yaml`.
+  A non-zero exit means the first run cannot use this file: report its `invalid:` line verbatim
+  and say the project is **not green**, whatever the later steps find. Keep going — the rest of
+  the report still tells the human what else is wrong.
+- **Resolve every role by script:**
+  `bash ${CLAUDE_PLUGIN_ROOT}/shared/lib/resolve-configured-packs.sh .ai/project-config.yaml`.
+  It prints one line per role and decides by the manifest's kind — `kind: platform` for the
+  platform role, a matching `role:` for the others — so never judge a pack's fit yourself. Report
+  each line: `resolved` (the pack, and the `pack.yaml` path the later steps use), `none`,
+  `unresolved` (the resolver's own line — never call it absent or not installed, the resolver
+  cannot tell those apart), `invalid`, `mismatch`, or `missing` (a required role the config does not
+  name). Exit `2` (no `packs:` block) means stop after this step, as for no config. Any line other
+  than `resolved` or `none` means not green.
 
 ## 3. What each pack still needs
 
@@ -62,7 +65,30 @@ and point at the manifest validator — this skill diagnoses an environment, not
 A pack that declares no preconditions reports exactly that. It is a normal, common answer, not a
 gap: most packs need nothing beyond what is already here.
 
-## 4. What each pack expects the session to offer
+## 4. What the project provides each pack, and what its credential reaches
+
+For every resolved pack, as `<role>=<path to that pack.yaml>` pairs, run:
+
+```
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-pack-environment.sh --settings .claude/settings.json <role>=<path> …
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-credentials.sh <role>=<path> …
+```
+
+Report both outputs **verbatim**. Neither prints a value, and you must not either: never echo,
+read back or `cat` a variable, the credentials file or anything a probe would have printed. A
+variable is named by its name, never shown.
+
+- `set:` is **presence only**. Never report it, or a green environment check, as proof that a
+  credential works — only a credential check's `ok:` line says what was proven, and it says exactly
+  what its `proves` text says, no more. Repeat that text; do not round it up to "works".
+- `missing:`, `unfilled:`, `blocked:` and `failed:` are environment problems a run would hit, each
+  reported with the source or remedy the pack declared. Any of them means not green.
+- `login:` means the variable is left to a login; whether the login works is the credential check's
+  answer, and a pack that declares no check (`none:`) leaves it unproven — say so.
+- Exit `2` from either script is a fault in the pack's manifest or the settings file, not the
+  machine — say which, as in step 3.
+
+## 5. What each pack expects the session to offer
 
 For every pack that resolved, also run:
 
@@ -79,16 +105,20 @@ offers a tool depends on that session — which plugins are enabled, whether one
 an answer from this session says nothing reliable about the one that will drive a run. The driver
 asks its own registry after intake, and that answer is the one that counts.
 
-## 5. Report
+## 6. Report
 
 State plainly, in this order:
 
 1. what is loaded, and from where
-2. per role: the configured pack, and whether it resolved
-3. per resolved pack: its precondition results, remedies verbatim
-4. per resolved pack: its declared session tools, each marked checked by the driver at run time
-5. one closing line naming what you did **not** do: nothing was installed, fixed, or changed, and
-   no run was blocked
+2. whether the project config validates
+3. per role: the configured pack, and the resolver's line for it
+4. per resolved pack: its precondition results, remedies verbatim
+5. per resolved pack: its variables and hosts, then its credential checks with what each proves
+6. per resolved pack: its declared session tools, each marked checked by the driver at run time
+7. green or not green, in one line: green only when the config validates, every role resolved,
+   and nothing in steps 3 and 4 is missing, unfilled, blocked or failed
+8. one closing line naming what you did **not** do: nothing was installed, fixed, or changed, no
+   value was printed, and no run was blocked
 
 The closing line is not a formality. Someone reading a list of missing tools will wonder whether
 this skill has already dealt with any of them, and the answer is always no.
@@ -114,6 +144,7 @@ this skill has already dealt with any of them, and the answer is always no.
 
 ## Reference, not restatement
 
-The `requires:` and `session_tools:` shapes are defined in `shared/pack-manifest.md`; the project config shape in
+The `requires:`, `env:`, `hosts:`, `credential_checks:` and `session_tools:` shapes, and how a host
+is matched against the allowlist, are defined in `shared/pack-manifest.md`; the project config shape in
 `shared/project-config.md`. Read them there. Do not restate either here — a second copy of a
 contract is a second thing to keep true.

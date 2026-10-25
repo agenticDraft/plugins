@@ -216,6 +216,64 @@ echo "[usage] unrecognized role name"
 OUT=$(bash "$CHECK" "$FIXDIR/config-valid.yaml" "bogus=$PLATFORM" 2>&1); ST=$?
 assert_exit "unrecognized role -> usage error (exit 2)" 2 $ST "$OUT"
 
+# --- check 5: the configured packs' variables and hosts, offline (D140) -------
+[[ -n "${TMPDIR:-}" ]] || { echo "TMPDIR is empty; refusing to create test directories" >&2; exit 1; }
+ENV_WORK="$(mktemp -d "$TMPDIR/check-preflight-env.XXXXXX")" || exit 1
+trap 'rm -rf "$ENV_WORK"' EXIT
+cp -R "$FIXDIR/providers/scm-valid" "$ENV_WORK/scm"
+cat >> "$ENV_WORK/scm/pack.yaml" <<'EOF'
+env:
+  - name: EXAMPLE_SCM_TOKEN
+    source: "an access token for the example code host"
+    login_alternative: "example-cli auth login"
+hosts: ["api.example-scm.test"]
+EOF
+cp -R "$PACKFIXDIR/provider-valid" "$ENV_WORK/tracker"
+cat >> "$ENV_WORK/tracker/pack.yaml" <<'EOF'
+env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings, API tokens"
+EOF
+printf '{"sandbox":{"network":{"allowedDomains":["api.example-scm.test"]}}}\n' > "$ENV_WORK/settings.json"
+printf '{"sandbox":{"network":{"allowedDomains":[]}}}\n' > "$ENV_WORK/empty.json"
+SECRET="fixture-value-0000-do-not-print"
+
+# envcase <settings> <env assignments…> — pre-flight over the env-declaring packs.
+envcase() {
+  local settings="$1"; shift
+  env -u EXAMPLE_SCM_TOKEN -u EXAMPLE_API_TOKEN "$@" bash "$CHECK" --settings "$settings" "$FIXDIR/config-valid.yaml" \
+    "platform=$PLATFORM" "tracker=$ENV_WORK/tracker/pack.yaml" "scm=$ENV_WORK/scm/pack.yaml" "browser=$BROWSER" 2>&1
+}
+
+echo "[accept] environment: variable set, login stands in, host allowed"
+OUT=$(envcase "$ENV_WORK/settings.json" EXAMPLE_API_TOKEN="$SECRET"); ST=$?
+assert_exit "ready (exit 0)" 0 $ST "$OUT"
+assert_contains "environment ok" "environment: ok" "$OUT"
+assert_contains "the login line is shown" "login: scm EXAMPLE_SCM_TOKEN" "$OUT"
+[[ "$OUT" != *"$SECRET"* ]]; assert_exit "no value printed" 0 $? "$OUT"
+
+echo "[reject] environment: a missing variable blocks, named"
+OUT=$(envcase "$ENV_WORK/settings.json"); ST=$?
+assert_exit "invalid (exit 1)" 1 $ST "$OUT"
+assert_contains "names the variable" "missing: tracker EXAMPLE_API_TOKEN" "$OUT"
+
+echo "[reject] environment: a placeholder blocks, value not printed"
+OUT=$(envcase "$ENV_WORK/settings.json" EXAMPLE_API_TOKEN="FILL-IN: $SECRET"); ST=$?
+assert_exit "invalid (exit 1)" 1 $ST "$OUT"
+assert_contains "names it unfilled" "unfilled: tracker EXAMPLE_API_TOKEN" "$OUT"
+[[ "$OUT" != *"$SECRET"* ]]; assert_exit "no placeholder text printed" 0 $? "$OUT"
+
+echo "[reject] environment: a declared host the sandbox does not allow blocks"
+OUT=$(envcase "$ENV_WORK/empty.json" EXAMPLE_API_TOKEN="$SECRET"); ST=$?
+assert_exit "invalid (exit 1)" 1 $ST "$OUT"
+assert_contains "names the host" "blocked: scm api.example-scm.test" "$OUT"
+
+echo "[reject] an invalid project config is never ready"
+printf 'packs:\n  tracker: x\n' > "$ENV_WORK/bad-config.yaml"
+OUT=$(bash "$CHECK" "$ENV_WORK/bad-config.yaml" "platform=$PLATFORM" 2>&1); ST=$?
+assert_exit "invalid (exit 1)" 1 $ST "$OUT"
+assert_contains "says the config does not validate" "project config does not validate" "$OUT"
+
 echo
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 exit $(( FAIL > 0 ? 1 : 0 ))

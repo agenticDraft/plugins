@@ -27,9 +27,19 @@
 #      will start it, so a human learns that before intake rather than
 #      several stages in. Like every other check here it reads declarations
 #      only; nothing polls the preview.
+#   5. the environment the configured packs declare (D140), delegated to
+#      check-pack-environment.sh over every role=path given: each `env`
+#      variable set and not a `FILL-IN:` placeholder, never printed; each
+#      `hosts` entry in the committed settings' sandbox allowlist. Offline —
+#      it reads the manifests, the settings file and this process's
+#      environment. Whether a credential works is not asked here; the route
+#      driver runs the packs' credential checks after this passes.
 #
 # Usage:
-#   check-preflight.sh <project-config path> <role>=<path-to-pack.yaml> [...]
+#   check-preflight.sh [--settings <path>] <project-config path> <role>=<path-to-pack.yaml> [...]
+#
+#   --settings  the committed settings file check 5 reads (default
+#               .claude/settings.json)
 #
 # role is one of: platform tracker scm design browser
 #
@@ -39,9 +49,11 @@
 #       ("onboarding: ok|warn — …", "audit: ok — …") when the platform pack
 #       declares either onboarding path — omitted entirely when it declares
 #       neither — then check 4's own line ("serve: ok|warn — …") when that
-#       pack declares a `serve` stage, omitted entirely when it does not.
+#       pack declares a `serve` stage, omitted entirely when it does not;
+#       then "environment: ok" and any "login: …" line check 5 printed.
 #   1 — "invalid: <reason>" on stderr, naming the first missing pack, role
-#       mismatch, unavailable operation, or open poisoning finding
+#       mismatch, unavailable operation, open poisoning finding, or every
+#       missing, unfilled or blocked line of check 5
 #   2 — usage error: no config argument, config not found, a malformed
 #       role=path pair, an unrecognized role name
 
@@ -52,11 +64,18 @@ VALIDATE_CONFIG="$SCRIPT_DIR/validate-project-config.sh"
 VALIDATE_MANIFEST="$SCRIPT_DIR/validate-pack-manifest.sh"
 CHECK_ONBOARDING="$SCRIPT_DIR/check-onboarding-gate.sh"
 CHECK_SERVE_NOTICE="$SCRIPT_DIR/check-serve-notice.sh"
+CHECK_ENVIRONMENT="$SCRIPT_DIR/check-pack-environment.sh"
 
 usage() {
-  echo "usage: check-preflight.sh <project-config path> <role>=<path-to-pack.yaml> [...]" >&2
+  echo "usage: check-preflight.sh [--settings <path>] <project-config path> <role>=<path-to-pack.yaml> [...]" >&2
   exit 2
 }
+
+SETTINGS=".claude/settings.json"
+if [[ "${1:-}" == "--settings" ]]; then
+  [[ $# -ge 2 ]] || usage
+  SETTINGS="$2"; shift 2
+fi
 
 fail() {
   echo "invalid: $1" >&2
@@ -220,6 +239,19 @@ if [[ $SERVE_STATUS -ne 0 ]]; then
   fail "serve notice could not run — ${SERVE_OUT}"
 fi
 
+# --- check 5: the environment the configured packs declare (D140) ---------
+ENV_ARGS=()
+for i in "${!ROLE_NAMES[@]}"; do
+  ENV_ARGS+=("${ROLE_NAMES[$i]}=${ROLE_PATHS[$i]}")
+done
+ENV_OUT="$("$CHECK_ENVIRONMENT" --settings "$SETTINGS" "${ENV_ARGS[@]}" 2>&1)"
+ENV_STATUS=$?
+if [[ $ENV_STATUS -eq 1 ]]; then
+  fail "the environment is not ready — $(grep -E '^(missing|unfilled|blocked): ' <<< "$ENV_OUT" | paste -sd ';' - | sed 's/;/; /g')"
+elif [[ $ENV_STATUS -ne 0 ]]; then
+  fail "environment check could not run — ${ENV_OUT}"
+fi
+
 # --- ready -------------------------------------------------------------
 echo "ready"
 echo "platform: ok"
@@ -237,4 +269,6 @@ fi
 if [[ "$SERVE_OUT" != "not-declared" ]]; then
   echo "$SERVE_OUT"
 fi
+echo "environment: ok"
+grep -E '^login: ' <<< "$ENV_OUT"
 exit 0

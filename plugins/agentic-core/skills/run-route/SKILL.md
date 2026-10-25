@@ -250,6 +250,8 @@ is the evaluator's own rendering rather than your paraphrase of it.
 digraph run_route {
     "Resolve pre-flight" [shape=box];
     "Pre-flight passed?" [shape=diamond];
+    "Check credentials" [shape=box];
+    "Credentials proven?" [shape=diamond];
     "Check run-state" [shape=box];
     "Run-state status?" [shape=diamond];
     "Resume or start fresh?" [shape=diamond];
@@ -288,7 +290,10 @@ digraph run_route {
 
     "Resolve pre-flight" -> "Pre-flight passed?";
     "Pre-flight passed?" -> "blocked" [label="no"];
-    "Pre-flight passed?" -> "Check run-state" [label="yes"];
+    "Pre-flight passed?" -> "Check credentials" [label="yes"];
+    "Check credentials" -> "Credentials proven?";
+    "Credentials proven?" -> "blocked" [label="no"];
+    "Credentials proven?" -> "Check run-state" [label="yes"];
     "Check run-state" -> "Run-state status?";
     "Run-state status?" -> "Resume or start fresh?" [label="resume (fresh, <2h)"];
     "Run-state status?" -> "Fresh start: run intake" [label="none, or stale-deleted"];
@@ -398,9 +403,31 @@ line is the one part of pre-flight's output written for a person rather than for
 (`shared/pre-flight.md`), and this is the only point at which it can be given — nothing inside a
 stage can print to this conversation while you wait on it. Print it as it came, add no verdict of
 your own, and never withhold a `serve: warn — …` line because the run is proceeding anyway;
-proceeding is what makes saying it worthwhile.
+proceeding is what makes saying it worthwhile. Print any `login:` line the same way.
 
-Then go to **Check run-state**.
+Then go to **Check credentials**.
+
+### Check credentials
+
+Run, with the same `role=path` pairs pre-flight was given:
+
+```
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-credentials.sh \
+  platform=<path> tracker=<path> scm=<path> browser=<path> [design=<path>]
+```
+
+It runs each pack's declared credential checks (`shared/pre-flight.md`, **After pre-flight: the
+credential checks**) and prints no value.
+
+### Credentials proven?
+
+- **Exit `1`:** no branch, run state or marker exists yet. Report `terminal: blocked` immediately,
+  quoting every `failed:` line verbatim — each carries the remedy its pack declared — as an
+  environment problem, never recorded anywhere. Route to **blocked**; do not proceed.
+- **Exit `2`:** the same, naming the line it printed; a pack's manifest is at fault.
+- **Exit `0`:** print its `ok:` and `none:` lines to the human verbatim. Each `ok:` says what it
+  proves and nothing more; do not call a credential "working" beyond that text. Then go to
+  **Check run-state**.
 
 ### Check run-state
 
@@ -954,4 +981,4 @@ gate, none for every other stage). The adapter reads its answer itself from the 
 - Inferring mode from anything other than the exact trailing `autonomous` token in `$ARGUMENTS` —
   a work item summary that sounds like it wants no interruptions is not a flag (core contract §8).
 
-<!-- instructions-stamp: a969a7d9ff02 -->
+<!-- instructions-stamp: 4c4c15b02b08 -->

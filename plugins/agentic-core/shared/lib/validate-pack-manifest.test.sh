@@ -1279,6 +1279,85 @@ OUT=$(bash "$VALIDATOR" "$PROV_CD/pack.yaml" 2>&1); ST=$?
 assert_exit "on a provider pack rejected" 1 $ST "$OUT"
 assert_contains "reason names the kind it belongs to" "config_derivation belongs to a platform pack, not a provider pack" "$OUT"
 
+echo "[accept] validator 28 — credential_checks after ignore_paths, before session_tools (D140)"
+mkdir -p "$PROV_TMP/scripts"; : > "$PROV_TMP/scripts/check-access.sh"
+provider_with 'env:
+  - name: EXAMPLE_API_TOKEN
+    source: "example account settings"
+ignore_paths: [".ai/example/"]
+credential_checks:
+  - check: repository-access
+    probe: [bash, <pack>/scripts/check-access.sh]
+    proves: "the credential reaches the configured repository; not what it may write"
+    remedy: "give the token access to this repository"
+session_tools:
+  - tool: example_tool
+    remedy: "enable the example plugin"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "provider credential_checks accepted (exit 0)" 0 $ST "$OUT"
+M=$(derivation_case cc-platform 'ignore_paths: ["out/"]' 'credential_checks:' '  - check: preview-access' '    probe: [true]' '    proves: "the preview answers this credential"' '    remedy: "renew the key"' 'config_derivation: "scripts/derive.sh"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "platform credential_checks before config_derivation accepted (exit 0)" 0 $ST "$OUT"
+
+echo "[reject] validator 28 — malformed credential_checks"
+provider_with 'credential_checks:
+  - check: repository-access
+    probe: "bash check.sh"
+    proves: "x"
+    remedy: "y"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "probe as a string rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the probe list" "credential_checks.repository-access: expected 'probe: [<argv>, …]'" "$OUT"
+provider_with 'credential_checks:
+  - check: repository-access
+    probe: [true]
+    remedy: "y"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "missing proves rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names proves" "credential_checks.repository-access: expected 'proves:" "$OUT"
+provider_with 'credential_checks:
+  - check: repository-access
+    probe: [true]
+    proves: "x"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "missing remedy rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'credential_checks:
+  - check: repository-access
+    probe: [bash, <pack>/scripts/absent.sh]
+    proves: "x"
+    remedy: "y"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a <pack>/ probe naming no file rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'credential_checks:
+  - check: Repository Access
+    probe: [true]
+    proves: "x"
+    remedy: "y"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a check that is not an identifier rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'credential_checks:
+  - check: a
+    probe: [true]
+    proves: "x"
+    remedy: "y"
+  - check: a
+    probe: [true]
+    proves: "x"
+    remedy: "y"'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "a check declared twice rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'credential_checks:'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "present but empty rejected (exit 1)" 1 $ST "$OUT"
+provider_with 'credential_checks:
+  - check: a
+    probe: [true]
+    proves: "x"
+    remedy: "y"
+hosts: ["api.example.test"]'
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "before hosts rejected (fixed order)" 1 $ST "$OUT"
+
 echo
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 exit $(( FAIL > 0 ? 1 : 0 ))

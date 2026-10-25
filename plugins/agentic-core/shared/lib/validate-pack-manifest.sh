@@ -35,9 +35,12 @@
 #     `name` and a quoted `source`, never a value; `hosts`, the network hosts
 #     they reach, each a quoted host name or `*.<domain>`; `ignore_paths`,
 #     the project-relative paths they write that are never committed, each
-#     quoted and literal (validator 26). A platform pack declares them after
-#     `branch_name` and before `reference_docs`; a provider pack after
-#     `text_conventions` and before `session_tools`.
+#     quoted and literal (validator 26). A fifth, `credential_checks`
+#     (validator 28, D140), declares how a credential is proven: per entry an
+#     identifier `check`, a `probe` given as argv, a quoted `proves` and a
+#     quoted `remedy`. A platform pack declares them after `branch_name` and
+#     before `config_derivation`; a provider pack after `text_conventions`
+#     and before `session_tools`.
 #
 #   provider — `role` is one of the four core roles; every key in
 #     `operations` and every entry in `unsupported` is an operation that
@@ -377,12 +380,64 @@ check_ignore_paths() {
   cursor=$((cursor + 1))
 }
 
-# The four declarations either kind may carry, in their fixed order (D137).
+# --- credential_checks (validator 28, D140) -----------------------------------
+# Optional, on either kind. How the pack's credential is proven to reach what
+# its operations need: per entry an identifier `check`, a `probe` given as
+# argv (the shape `requires:` uses, `<pack>/` resolved the same way), a quoted
+# `proves` saying what a pass shows and what it does not, and a quoted
+# `remedy`. Shape only: nothing here runs a probe.
+check_credential_checks() {
+  [[ "${LINES[cursor]:-}" =~ ^credential_checks:$ ]] || return 0
+  cursor=$((cursor + 1))
+  local cc_count=0 cc_check cc_seen=" " probe_arg probe_path
+  while [[ "${LINES[cursor]:-}" =~ ^\ \ -\ check:\ (.*)$ ]]; do
+    cc_check="${BASH_REMATCH[1]}"
+    [[ "$cc_check" =~ ^[a-z][a-z0-9-]*$ ]] \
+      || fail "credential_checks: 'check' must be an identifier (lower-case letters, digits and '-'), got '$cc_check'"
+    [[ "$cc_seen" == *" $cc_check "* ]] && fail "credential_checks: '$cc_check' is declared twice"
+    cc_seen+="$cc_check "
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ probe:\ \[(.*)\]$ ]] \
+      || fail "credential_checks.$cc_check: expected 'probe: [<argv>, …]' as a list, got '${LINES[cursor]:-<end of file>}'"
+    bracket_list "${BASH_REMATCH[1]}"
+    [[ ${#LIST[@]} -gt 0 && -n "${LIST[0]:-}" ]] \
+      || fail "credential_checks.$cc_check: 'probe' is an empty list"
+    for probe_arg in "${LIST[@]}"; do
+      [[ "$probe_arg" == "<pack>/"* ]] || continue
+      probe_path="${probe_arg#<pack>/}"
+      validate_declared_path "credential_checks.$cc_check.probe" "$probe_path"
+      [[ -f "$PACK_ROOT/$probe_path" ]] \
+        || fail "credential_checks.$cc_check: 'probe' names a file this pack does not ship: '$probe_path'"
+    done
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ proves:\ \"(.*)\"$ ]] \
+      || fail "credential_checks.$cc_check: expected 'proves: \"<what a pass shows>\"', got '${LINES[cursor]:-<end of file>}'"
+    [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
+      || fail "credential_checks.$cc_check: 'proves' is empty"
+    cursor=$((cursor + 1))
+
+    [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ remedy:\ \"(.*)\"$ ]] \
+      || fail "credential_checks.$cc_check: expected 'remedy: \"<what a human does>\"', got '${LINES[cursor]:-<end of file>}'"
+    [[ -n "${BASH_REMATCH[1]//[[:space:]]/}" ]] \
+      || fail "credential_checks.$cc_check: 'remedy' is empty"
+    cursor=$((cursor + 1))
+
+    cc_count=$((cc_count + 1))
+  done
+  [[ $cc_count -eq 0 ]] \
+    && fail "'credential_checks:' is present but declares no entries — omit the key instead"
+  return 0
+}
+
+# The five declarations either kind may carry, in their fixed order (D137, D140).
 check_declarations() {
   check_requires
   check_env
   check_hosts
   check_ignore_paths
+  check_credential_checks
 }
 
 require_line '^kind: (platform|provider)$' "'kind: platform' or 'kind: provider'"
