@@ -485,6 +485,13 @@ committed on purpose; the credentials file `setup` creates is among the `ignore`
 together — the core's and every configured pack's `ignore_paths` — are everything a project ignores
 for a run.
 
+**Who reads them in a run.** The route driver writes them, one per line, to
+`.ai/run-context/working-paths.txt` (`lib/write-working-paths.sh`) before intake.
+`lib/check-tree-clean.sh`, `lib/check-publish-criteria.sh` and `lib/commit-change.sh` each take that
+file through `--exclude-file` and drop its paths (`lib/filter-working-paths.sh`: a `/`-ended entry
+is a prefix, any other entry an exact path), so a working path is never part of the change even in
+a project whose ignore file does not yet name it.
+
 **Who reads them in `setup`.** `lib/collect-pack-declarations.sh` reads these keys from the packs the
 project config names, and `run-paths.txt`; `lib/write-credential-placeholders.sh`,
 `lib/write-sandbox-hosts.sh` and `lib/write-ignore-rules.sh` each merge one kind into the project,

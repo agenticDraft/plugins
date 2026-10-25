@@ -52,7 +52,7 @@
       "displayName": "Agentic Core",
       "source": "./plugins/agentic-core",
       "description": "Agnostic delivery core: sequences stages, spawns pack adapters as subagents, reads the result envelope and branches. Names no tracker, SCM, design tool or browser.",
-      "version": "0.2.14",
+      "version": "0.2.15",
       "category": "development",
       "tags": [
         "delivery",
@@ -72,7 +72,7 @@
       "displayName": "Agentic Edge Delivery",
       "source": "./plugins/agentic-eds",
       "description": "Platform pack for an Edge Delivery project: binds every stage of the default delivery route to the platform's own conventions.",
-      "version": "0.2.11",
+      "version": "0.2.12",
       "category": "development",
       "tags": [
         "edge-delivery",
@@ -112,7 +112,7 @@
       "displayName": "Agentic GitHub",
       "source": "./plugins/agentic-github",
       "description": "SCM provider pack: create_branch, publish_change and check_status against a GitHub repository over the gh CLI.",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "category": "development",
       "tags": [
         "github",

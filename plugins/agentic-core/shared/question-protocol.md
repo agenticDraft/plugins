@@ -67,6 +67,14 @@ stage-readable boundary); the exact path is the route driver's to place.
   re-invokes the asking stage rather than skipping it.
 - **Not a retry.** A retry re-runs a stage on the same inputs after `fail`, and never happens. A
   re-invocation runs it on an input it asked for.
+- **The tree is guarded while the question is open.** The driver snapshots the tree
+  (`lib/check-tree-unchanged.sh snapshot`) before it asks, and compares it before it re-invokes,
+  allowing only the answer file to change. Any other change ends the run `blocked`, every changed
+  path named: no stage made it, so nothing in the run can say whether the plan wanted it. An
+  answer is text the asking stage reads, never an instruction for the driver to edit, install or
+  commit anything.
+- **An environment fault is not asked.** A `question` with `error_class: TRANSIENT` or `PERMANENT`
+  never reaches this protocol: `stage-runner.md`'s `terminate-blocked` ends the run first.
 
 ## Decision vocabulary
 

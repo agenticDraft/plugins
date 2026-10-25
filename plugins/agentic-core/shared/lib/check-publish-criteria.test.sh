@@ -221,6 +221,49 @@ OUT=$(bash "$CHECK" "$WORK" 2>&1); ST=$?
 assert_exit "ignored untracked file does not block a clean change (exit 0)" 0 $ST "$OUT"
 assert_contains "counts only the real change, not the ignored scratch file" "valid: publish (1 files changed)" "$OUT"
 
+echo "[working paths] a declared working path is not part of the change under review"
+WORK="$(new_fixture working-paths)"
+(
+  cd "$WORK"
+  git checkout --quiet -b task-branch
+  echo "line2" >> README.md
+  mkdir -p drafts
+  echo "<div></div>" > drafts/EX-1.plain.html
+)
+printf '%s\n' 'drafts/' > "$WORK/../working-paths.txt"
+OUT=$(bash "$CHECK" "$WORK" --exclude-file "$WORK/../working-paths.txt" 2>&1); ST=$?
+assert_exit "the change without the fixture is accepted (exit 0)" 0 $ST "$OUT"
+assert_contains "counts only the real change" "valid: publish (1 files changed)" "$OUT"
+OUT=$(bash "$CHECK" "$WORK" 2>&1); ST=$?
+assert_contains "without the file the fixture is counted, as before" "valid: publish (2 files changed)" "$OUT"
+
+echo "[working paths] a change made only of working paths is no change"
+WORK="$(new_fixture working-paths-only)"
+(
+  cd "$WORK"
+  git checkout --quiet -b task-branch
+  mkdir -p drafts
+  echo "<div></div>" > drafts/EX-1.plain.html
+)
+printf '%s\n' 'drafts/' > "$WORK/../working-paths.txt"
+OUT=$(bash "$CHECK" "$WORK" --exclude-file "$WORK/../working-paths.txt" 2>/dev/null); ST=$?
+assert_exit "only a fixture -> satisfied (exit 3)" 3 $ST "$OUT"
+
+echo "[working paths] a forced-in ignored path is still refused even when declared"
+WORK="$(new_fixture working-paths-forced)"
+(
+  cd "$WORK"
+  echo "secret.env" > .gitignore
+  git add .gitignore && git commit --quiet -m "ignore" && git push --quiet origin HEAD:main
+  git checkout --quiet -b task-branch
+  echo "line2" >> README.md
+  echo "x" > secret.env
+  git add -f secret.env
+)
+printf '%s\n' 'drafts/' > "$WORK/../working-paths.txt"
+OUT=$(bash "$CHECK" "$WORK" --exclude-file "$WORK/../working-paths.txt" 2>&1); ST=$?
+assert_exit "criterion 2 still holds (exit 1)" 1 $ST "$OUT"
+
 echo "[usage] no argument"
 OUT=$(bash "$CHECK" 2>&1); ST=$?
 assert_exit "no arg -> usage error (exit 2)" 2 $ST "$OUT"

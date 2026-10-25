@@ -99,6 +99,12 @@ investigate. "Please investigate" is not a blocker; a command a reader can run i
 `VALIDATION` and `PERMANENT` keep their own shapes — a diagnosis on exhaustion, and a report plus
 clean exit, respectively. Neither escalates to a question.
 
+**At the route level, a question about the environment ends the run.** The route driver reads the
+class before the verdict (`stage-runner.md`, `terminate-blocked`): a `question` or `fail` with
+`TRANSIENT` or `PERMANENT` ends the run `blocked` and quotes the `blocker` as the remedy, so the
+human fixes the environment outside the run and starts it again. The `blocker` must therefore read
+as something to do before the next run, never as an offer to fix it inside this one.
+
 ## The escalation report
 
 Whenever an operation escalates or stops, what it emits above the envelope carries four things, in
