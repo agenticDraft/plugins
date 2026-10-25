@@ -58,8 +58,15 @@ the core can be pointed at.
    pack for every role from the installed packs, has the platform pack derive its own values from
    the git remote, confirms everything once, and writes `.ai/project-config.yaml`: `version`,
    `packs`, `commands`, `paths`, `limits`, `trigger`, and the optional `branch_name` and
-   `platform`. The trigger identity is a placeholder the human fills by hand; `setup` runs the
-   config validator once none is left. Every pack reads that one file.
+   `platform`. The spec directory is fixed at `.ai/specs`; `limits` and the trigger token come
+   from defaults the human confirms. The trigger identity is a placeholder the human fills by
+   hand; `setup` runs the config validator once none is left. Every pack reads that one file.
+   Then it writes the project's own files from what the chosen packs declare, add only, so a
+   re-run never changes what the human filled: credential placeholders in
+   `.claude/settings.local.json`, the packs' hosts in the committed sandbox allowlist, and the
+   never-committed paths in `.gitignore`. It names the lines to fill, the files to commit, and
+   that a new session is needed, because the credentials and the allowlist are read once at
+   session start. Run again on an existing config, it offers keep, re-detect or edit.
 7. **Every decision that can be a script is a script.** The shared library holds the validators,
    writers and checkers the driver and the packs call; each has a `.test.sh` beside it, and none
    involves a model.
@@ -109,6 +116,7 @@ the core can be pointed at.
 
 ```text
 /agentic-core:setup ──→ .ai/project-config.yaml  (packs, commands, paths, limits)
+                    ──→ .claude/settings.local.json placeholders, sandbox hosts, .gitignore paths
 
 /agentic-core:run-route <item> [autonomous]
   ↓
@@ -139,7 +147,7 @@ its own answer file at fixed paths; which stages ran before it is the driver's k
 
 | Skill       | Invocation                                            | What it does                                                                                  |
 | ----------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `setup`     | `/agentic-core:setup`                                 | Detects commands and the preview, proposes knowledge sources, picks every pack role from the installed packs, derives the platform's values from the remote, writes a complete `.ai/project-config.yaml` and validates it. Generates a platform pack from an interview only when none is installed. Never installs; never asks for a credential or identifier. |
+| `setup`     | `/agentic-core:setup`                                 | Detects commands and the preview, proposes knowledge sources, picks every pack role from the installed packs, derives the platform's values from the remote, writes a complete `.ai/project-config.yaml` and validates it. Then adds, from the chosen packs' declarations, credential placeholders, sandbox hosts and ignore rules, and names the lines to fill, the files to commit and that a new session is needed. Generates a platform pack from an interview only when none is installed. Re-runnable: keep, re-detect or edit. Never installs; never asks for, writes or prints a credential or identifier. |
 | `health`    | `/agentic-core:health`                                | Reports what is loaded, which pack each role resolves to, and each pack's declared preconditions with the remedy the pack states. Read-only. |
 | `run-route` | `/agentic-core:run-route <work item id or URL> [autonomous]` | Drives one route to a terminal state. The only component allowed to spawn a stage adapter. |
 
@@ -248,7 +256,9 @@ A project installs it by the `settings.json` in the [getting-started guide](../g
    Installed from a marketplace, use `claude plugin install agentic-core@<marketplace>`; a pack
    that declares `"dependencies": ["agentic-core"]` enables the core with it.
 2. Configure the project once: `/agentic-core:setup`. It confirms every value before writing
-   `.ai/project-config.yaml`.
+   `.ai/project-config.yaml`, then adds the credential placeholders, sandbox hosts and ignore
+   rules the chosen packs declare. Fill the lines it names by hand, commit the files it names,
+   and start a new session.
 3. Check the environment: `/agentic-core:health`.
 4. Run a route: `/agentic-core:run-route <work item id or URL>`, or with `autonomous` appended
    to write blockers back instead of asking.
