@@ -52,6 +52,7 @@ credential_checks:                         # optional
     proves: "<what a pass shows, and what it does not>"
     remedy: "<what a human does to fix it>"
 config_derivation: "<relative path>"       # optional; a script, relative to the pack root
+setup_skill: "<skill name>"                # optional; a skill this pack ships
 reference_docs: "<https url>"              # optional; last
 ```
 
@@ -101,7 +102,8 @@ Fixed per kind, in order.
   exceptions to "all required" — all three optional, and a pack may declare any subset of them,
   including none. So is `authoring_examples_path` (D132), which follows them. After `branch_name`
   come the five optional declarations `requires`, `env`, `hosts`, `ignore_paths`,
-  `credential_checks`, then the optional `config_derivation`, then `reference_docs` last.
+  `credential_checks`, then the optional `config_derivation` and `setup_skill`, then `reference_docs`
+  last.
 - **provider** — `kind`, `role`, `operations`, `unsupported`, `scripts`, `text_conventions` for
   the `tracker` role, `requires`, `env`, `hosts`, `ignore_paths`, `credential_checks`,
   `session_tools`. The first four are
@@ -181,6 +183,13 @@ open class.
   and how, is the pack's; the core learns neither. Checked as a `scripts:` path is: relative, no `..`
   segment, the file exists (validator 27). A pack that declares none leaves those keys to a hand
   edit.
+- `setup_skill` (D141) — optional, platform packs only, after `config_derivation`. One double-quoted
+  skill name, lower-case letters, digits and `-`, that this pack ships as `skills/<name>/SKILL.md`.
+  The core's `setup` reads it with `lib/read-setup-skill.sh` and invokes `<pack name>:<name>` as its
+  last step, quoting the skill's envelope; what the skill does is the pack's. It may ask the human
+  and run the pack's own scripts; it never installs, never asks for or writes a credential or an
+  identifier, and writes the project config only through `lib/write-run-config.sh --derived`
+  (validator 29).
 - `reference_docs` (D117) — optional, the last platform key: one double-quoted `https` URL, the
   platform's official reference. Every stage that writes code, and the item-authoring skill, read it
   before deciding a question no project rule answers, and cite what they read
@@ -324,6 +333,8 @@ digraph route {
 - `config_derivation` that is not double-quoted, is empty, absolute or contains a `..` segment, names
   a file that does not exist, comes before `ignore_paths` or after `reference_docs`, or appears on a
   provider manifest.
+- `setup_skill` that is not one double-quoted skill name, names a skill the pack does not ship,
+  comes before `config_derivation` or after `reference_docs`, or appears on a provider manifest.
 - `credential_checks` present but empty, out of the fixed order, with a `check` that is not an
   identifier or is declared twice, a `probe` given as a string, empty, or naming a `<pack>/` file that
   does not exist, or a `proves` or `remedy` missing or empty (validator 28).
@@ -388,11 +399,12 @@ digraph route {
   - **Absent means ungated**, the same rule an undeclared `unsupported:` list already follows. A
     pack that declares no `requires` has no local precondition; silence is never read as a hidden
     one.
-  - **Declaring this gates nothing at load time.** Two readers consult it — a read-only diagnostic,
-    on demand, and the operation itself before it acts — and both quote the declared `remedy` rather
-    than composing their own. The capability check that runs before a route starts reads manifests
-    only and never probes a machine, so a missing tool is reported, never guessed at, and never
-    discovered by a route that already created a branch.
+  - **Declaring this gates nothing at load time.** Three readers consult it — a read-only
+    diagnostic, on demand; the route driver, after pre-flight and before `intake`, which ends the
+    run `blocked`; and the operation itself before it acts — and all quote the declared `remedy`
+    rather than composing their own. Pre-flight reads manifests only and never probes a machine, so
+    a missing tool is reported by the driver's own step, never guessed at, and never discovered by a
+    route that already created a branch.
 - `session_tools` — optional, the last provider key. The tools this pack's operations call that only
   the session running the route can provide — a tool a plugin or a server registers in the session,
   which no script on the machine can see. Each entry declares two things.
@@ -621,4 +633,5 @@ bash plugins/agentic-core/shared/lib/setup-project-files.test.sh
 bash plugins/agentic-core/shared/lib/resolve-configured-packs.test.sh
 bash plugins/agentic-core/shared/lib/check-pack-environment.test.sh
 bash plugins/agentic-core/shared/lib/check-credentials.test.sh
+bash plugins/agentic-core/shared/lib/read-setup-skill.test.sh
 ```

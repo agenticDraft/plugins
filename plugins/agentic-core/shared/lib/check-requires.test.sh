@@ -286,6 +286,32 @@ EOF
 OUT=$("$CHECKER" "$BAD" 2>&1); RC=$?
 assert_exit "an empty requires block -> usage error" 2 "$RC" "$OUT"
 
+echo "[labelled] several packs at once, as the route driver runs it before intake (D141)"
+MISSING_ONE="$TMPDIR_TEST/missing-one.yaml"
+cat > "$MISSING_ONE" <<'EOF'
+kind: platform
+requires:
+  - tool: failing-tool
+    probe: [failing-tool]
+    remedy: "add failing-tool to the project"
+EOF
+OUT=$("$CHECKER" platform="$MISSING_ONE" browser="$PRESENT" design="$NONE" 2>/dev/null); RC=$?
+assert_exit "one pack missing a tool -> exit 1" 1 "$RC" "$OUT"
+assert_contains "names the label, the tool and the remedy on stdout" "missing: platform failing-tool — add failing-tool to the project" "$OUT"
+assert_contains "names a present tool with its label" "ok: browser present-tool" "$OUT"
+assert_contains "names a pack with nothing declared" "ok: design no requirements declared" "$OUT"
+assert_contains "totals across packs" "1 of 2 declared tools are missing; nothing was installed" "$OUT"
+OUT=$("$CHECKER" browser="$PRESENT" design="$NONE" 2>&1); RC=$?
+assert_exit "nothing missing -> exit 0" 0 "$RC" "$OUT"
+assert_not_contains "no total line when nothing is missing" "declared tools are missing" "$OUT"
+OUT=$("$CHECKER" browser="$PRESENT" design="$BAD" 2>&1); RC=$?
+assert_exit "a malformed pack among several -> exit 2" 2 "$RC" "$OUT"
+assert_contains "names the label of the malformed pack" "design:" "$OUT"
+OUT=$("$CHECKER" browser="$PRESENT" "$NONE" 2>&1); RC=$?
+assert_exit "labelled and bare arguments mixed -> usage error" 2 "$RC" "$OUT"
+OUT=$("$CHECKER" platform="$TMPDIR_TEST/nope.yaml" 2>&1); RC=$?
+assert_exit "a labelled path that does not exist -> usage error" 2 "$RC" "$OUT"
+
 echo
 if [[ "$FAIL" -eq 0 ]]; then
   echo "=== $PASS passed, 0 failed ==="

@@ -135,14 +135,16 @@ for a check that, unlike the first two, is not purely about the pack in isolatio
    and a set variable is never called working — this check answers presence only. It reads files
    and the process environment and reaches nothing, so it stays inside this file's ban.
 
-## After pre-flight: the credential checks
+## After pre-flight: the tool and credential checks
 
-Whether a credential actually reaches what a run needs is a network question, so pre-flight does
-not ask it. The route driver asks it next, before `intake` and before any branch, run state or
-marker exists: `lib/check-credentials.sh` over the same `role=path` pairs, running each pack's
-declared `credential_checks:`. A failing check ends the run `blocked` with the declared remedy. A
-pass is reported as the check's own `proves` text, never as "the credential works". `health` runs
-the same script on demand.
+Whether a declared tool is present, and whether a credential actually reaches what a run needs,
+are questions only a probe answers, so pre-flight does not ask them. The route driver asks them
+next, before `intake` and before any branch, run state or marker exists, over the same `role=path`
+pairs: `lib/check-requires.sh`, running each pack's declared `requires:` probes, then
+`lib/check-credentials.sh`, running each pack's declared `credential_checks:`. A missing tool or a
+failing check ends the run `blocked` with the declared remedy, which is shown and never run. A
+credential pass is reported as the check's own `proves` text, never as "the credential works".
+`health` runs the same scripts on demand.
 
 ## What a failure produces
 

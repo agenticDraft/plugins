@@ -1,5 +1,5 @@
 ---
-description: Set up this project for the delivery core — write a complete .ai/project-config.yaml that passes the config validator. Detects the project's own lint/test/build/serve commands and local preview, fixes the spec directory at .ai/specs, picks every pack role (platform, tracker, scm, design, browser) from the packs already installed, derives the platform's own values from the git remote through the platform pack's declared script, writes limits and the trigger token from defaults you confirm, and writes the trigger identity as a placeholder you fill by hand. Then writes the project's own files from the chosen packs' declarations, add only: credential placeholders in .claude/settings.local.json, the packs' hosts in the committed sandbox allowlist, and the never-committed paths in .gitignore — and names the lines to fill, the files to commit, and that a new session is needed. Proposes marketplace plugins as knowledge sources, never installs. Interviews you for a generated platform pack only when no installed pack is a platform pack. Re-runnable with keep / re-detect / edit. Never asks for, writes or prints a credential or a personal identifier.
+description: Set up this project for the delivery core — write a complete .ai/project-config.yaml that passes the config validator. Detects the project's own lint/test/build/serve commands and local preview, fixes the spec directory at .ai/specs, picks every pack role (platform, tracker, scm, design, browser) from the packs already installed, derives the platform's own values from the git remote through the platform pack's declared script, writes limits and the trigger token from defaults you confirm, and writes the trigger identity as a placeholder you fill by hand. Then writes the project's own files from the chosen packs' declarations, add only: credential placeholders in .claude/settings.local.json, the packs' hosts in the committed sandbox allowlist, and the never-committed paths in .gitignore — and names the lines to fill, the files to commit, and that a new session is needed. Ends by handing over to the platform pack's own setup skill when its manifest declares one. Proposes marketplace plugins as knowledge sources, never installs. Interviews you for a generated platform pack only when no installed pack is a platform pack. Re-runnable with keep / re-detect / edit. Never asks for, writes or prints a credential or a personal identifier.
 disable-model-invocation: true
 ---
 
@@ -157,9 +157,21 @@ credentials file when step 7 created none).
 
 Never run the validator while the config holds a placeholder — it checks shape only and would call the file valid.
 
-## 9. Report
+## 9. The platform pack's own setup, then the report
 
-State plainly:
+Some of what a first run needs only the platform knows: a service that must cover the repository, a
+tool the project must hold, a value only the human has. A platform pack that needs any of it
+declares a setup skill, and this step hands over to it — the core never learns what it does.
+
+1. Resolve the platform pack with `resolve-plugin-root.sh <platform>` (a generated pack from steps
+   10–12 declares none: skip and say so), then run
+   `bash ${CLAUDE_PLUGIN_ROOT}/shared/lib/read-setup-skill.sh <root>/pack.yaml`.
+2. `setup_skill: <name>` (exit `0`) — invoke `Skill(<platform>:<name>)` and let it run to its own
+   end; it may ask the human its own questions. Quote its `## Result` block verbatim in the report.
+   Exit `3` — the pack declares none; say so. Exit `1` — report its line; the pack's manifest is at
+   fault.
+
+Then state plainly:
 
 - the config path, fresh or updated, and every key written — identities by count only;
 - the knowledge sources proposed in step 2, each labelled a knowledge source, or that none fitted or the scan failed;
