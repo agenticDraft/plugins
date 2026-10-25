@@ -1358,6 +1358,44 @@ hosts: ["api.example.test"]'
 OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "before hosts rejected (fixed order)" 1 $ST "$OUT"
 
+# --- setup_skill (validator 29, D141) ---------------------------------------
+
+echo "[validator 29] setup_skill — a platform pack's own setup skill (D141)"
+setup_case() {
+  local m; m=$(derivation_case "$@")
+  mkdir -p "$(dirname "$m")/skills/example-setup"
+  : > "$(dirname "$m")/skills/example-setup/SKILL.md"
+  echo "$m"
+}
+M=$(setup_case ss-ordered 'config_derivation: "scripts/derive.sh"' 'setup_skill: "example-setup"' 'reference_docs: "https://docs.example.org/"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "after config_derivation, before reference_docs, accepted" 0 $ST "$OUT"
+M=$(setup_case ss-alone 'setup_skill: "example-setup"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "as the only optional key accepted" 0 $ST "$OUT"
+M=$(setup_case ss-missing 'setup_skill: "absent-setup"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "a skill the pack does not ship rejected" 1 $ST "$OUT"
+assert_contains "says the skill is missing" "setup_skill names a skill this pack does not ship" "$OUT"
+for bad in 'example-setup' '"Example_Setup"' '"../x"' '""' '"skills/example-setup"'; do
+  M=$(setup_case "ss-bad-$RANDOM" "setup_skill: $bad")
+  OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+  assert_exit "setup_skill $bad rejected" 1 $ST "$OUT"
+  assert_contains "setup_skill $bad → names the key" "setup_skill" "$OUT"
+done
+M=$(setup_case ss-before-cd 'setup_skill: "example-setup"' 'config_derivation: "scripts/derive.sh"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "before config_derivation rejected (fixed order)" 1 $ST "$OUT"
+M=$(setup_case ss-after-rd 'reference_docs: "https://docs.example.org/"' 'setup_skill: "example-setup"')
+OUT=$(bash "$VALIDATOR" "$M" 2>&1); ST=$?
+assert_exit "after reference_docs rejected (reference_docs is last)" 1 $ST "$OUT"
+PROV_SS="$BN_WORK/ss-provider"; mkdir -p "$PROV_SS/skills/example-setup"
+printf 'kind: provider\nrole: design\noperations: {}\nunsupported: [fetch_reference]\nsetup_skill: "example-setup"\n' > "$PROV_SS/pack.yaml"
+: > "$PROV_SS/skills/example-setup/SKILL.md"
+OUT=$(bash "$VALIDATOR" "$PROV_SS/pack.yaml" 2>&1); ST=$?
+assert_exit "on a provider pack rejected" 1 $ST "$OUT"
+assert_contains "reason names the kind it belongs to" "setup_skill belongs to a platform pack, not a provider pack" "$OUT"
+
 echo
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 exit $(( FAIL > 0 ? 1 : 0 ))

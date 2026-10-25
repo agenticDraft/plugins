@@ -1,5 +1,5 @@
 ---
-description: Generates a renderable `.plain.html` test-content fixture in `drafts/` for a block that has no existing authored content anywhere in the project (G3, D8) — a placeholder block table, never inferred real content. Not a route stage and not a role operation; a callable helper another stage adapter or a human invokes by name, the same way a stage adapter invokes a role skill.
+description: Generates a renderable `.plain.html` test-content fixture in `drafts/` for a block that has no existing authored content anywhere in the project (G3, D8) — a placeholder block table, never inferred real content. Given a cases file, builds it from the work item's acceptance criteria instead — one authored case per criterion (an empty cell, a whitespace-only cell, an all-empty row, a picture cell, a text cell), composed by a script. Not a route stage and not a role operation; a callable helper another stage adapter or a human invokes by name, the same way a stage adapter invokes a role skill.
 context: fork
 ---
 
@@ -31,7 +31,17 @@ item_id: <the work item id, required — becomes the output filename>
 rows: <positive integer, optional, default 2>
 columns: <positive integer, optional, default 2>
 image_cells: <non-negative integer, optional, default 0>
+cases: <path to a cases file, optional>
 ```
+
+`cases` is how a caller asks for a fixture that exercises the work item's own acceptance criteria
+rather than a placeholder grid. It is a tab-separated file, one line per criterion, `<AC-id>
+<case> [<reason>]`, with the case taken from a closed vocabulary — `text`, `picture`, `empty`,
+`whitespace`, `empty-row`, `page`, or `none` with a reason. The caller chooses each criterion's
+case, because that is a reading of the criterion; the markup is then written by
+`${CLAUDE_PLUGIN_ROOT}/shared/scripts/compose-fixture.sh`, never by hand, so a criterion about an
+empty cell always gets a cell that really is empty. With `cases` given, `rows`, `columns` and
+`image_cells` are ignored: the cases decide the rows.
 
 `image_cells` is how many cells at the **start of each row** carry a generated placeholder picture
 instead of placeholder text. A block whose own decoration looks for `picture > img` renders with
@@ -57,6 +67,9 @@ digraph eds_fixture {
     "Read the input" [shape=box];
     "Block and item_id both given?" [shape=diamond];
     "Fixture already exists at this path?" [shape=diamond];
+    "Cases given?" [shape=diamond];
+    "Compose from the cases" [shape=box];
+    "Composed?" [shape=diamond];
     "Compose the block-table markup" [shape=box];
     "Any image cells requested?" [shape=diamond];
     "Write the placeholder image" [shape=box];
@@ -68,7 +81,12 @@ digraph eds_fixture {
     "Block and item_id both given?" -> "Fixture already exists at this path?" [label="yes"];
     "Block and item_id both given?" -> "Report fail" [label="no"];
     "Fixture already exists at this path?" -> "Report fail" [label="yes"];
-    "Fixture already exists at this path?" -> "Compose the block-table markup" [label="no"];
+    "Fixture already exists at this path?" -> "Cases given?" [label="no"];
+    "Cases given?" -> "Compose from the cases" [label="yes"];
+    "Cases given?" -> "Compose the block-table markup" [label="no"];
+    "Compose from the cases" -> "Composed?";
+    "Composed?" -> "Report pass" [label="exit 0"];
+    "Composed?" -> "Report fail" [label="exit 1 or 2"];
     "Compose the block-table markup" -> "Any image cells requested?";
     "Any image cells requested?" -> "Write the placeholder image" [label="image_cells > 0"];
     "Any image cells requested?" -> "Write the fixture file" [label="image_cells = 0"];
@@ -93,11 +111,36 @@ skill has nothing to name the block or the output file with.
 
 ### Fixture already exists at this path?
 
-Compute the output path `drafts/<item_id>.plain.html`. Absent — continue to **Compose the
-block-table markup**. Present — go to **Report fail**: a path already occupied means either real
+Compute the output path `drafts/<item_id>.plain.html`. Absent — continue to **Cases given?**.
+Present — go to **Report fail**: a path already occupied means either real
 authored content or a previous fixture, and this skill has no way to tell which, so it does not
 overwrite it. A caller that wants a fresh fixture deletes the existing file first, or passes a
 different `item_id`.
+
+### Cases given?
+
+`cases` was passed and names a file — go to **Compose from the cases**. Not passed — go to
+**Compose the block-table markup**, the placeholder grid.
+
+### Compose from the cases
+
+Run:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/compose-fixture.sh --block <block> --item <item_id> \
+  --spec .ai/run-context/sanitized-spec.md --cases <cases>
+```
+
+It checks the cases against the item's criteria first — every criterion exactly once, no other,
+each case from the vocabulary, a reason on every `none` — and writes nothing when one is wrong. On
+success it writes `drafts/<item_id>.plain.html`, `drafts/<item_id>.cases.tsv` (the copy the
+coverage check reads), and `drafts/<item_id>-fixture-image.svg` when a `picture` case exists, one
+`written:` line each.
+
+### Composed?
+
+Exit `0` — go to **Report pass**, with every `written:` path as an artifact. Exit `1` or `2` — go
+to **Report fail**, quoting its first `refused:` line as the summary.
 
 ### Compose the block-table markup
 
@@ -207,5 +250,5 @@ Emit the `## Result` block as plain `key: value` lines per `${CLAUDE_PLUGIN_ROOT
 
 - `verdict: pass`
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap — an oversized summary fails validation and takes the whole run to `failed`) naming the block, the item id, and the rows×columns generated, and how many image cells per row when `image_cells` was greater than zero.
-- `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): `drafts/<item_id>.plain.html`, plus `drafts/<item_id>-fixture-image.svg` when an image was written — a caller that has to clean up after a fixture needs both paths, not just the one.
+- `artifacts` (always a YAML list — `artifacts:` then `  - <path>` per line; even a single path is a list, never an inline scalar): `drafts/<item_id>.plain.html`, plus `drafts/<item_id>-fixture-image.svg` when an image was written, plus `drafts/<item_id>.cases.tsv` when the fixture was composed from cases — a caller that has to clean up after a fixture needs both paths, not just the one.
 - `next_action: none`

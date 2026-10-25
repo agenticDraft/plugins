@@ -5,11 +5,10 @@
 # argv, and a `remedy`.
 #
 # This is the one place in the core that runs something to answer a question
-# about the machine, and it is deliberately not the capability gate that runs
-# before a route. That gate reads declarations only and never probes, because
-# a false negative from a live probe would abort a run permanently, on
-# conditions a pack author does not control. Here, a false negative costs a
-# wrong line in a report that nothing acts on automatically.
+# about the machine, and it is deliberately not pre-flight. Pre-flight reads
+# declarations only and never probes. The route driver runs this script in its
+# own step after pre-flight and before intake, and ends the run `blocked` with
+# the declared remedy; the `health` diagnostic runs it on demand.
 #
 # Read-only, in the strong sense: it runs each declared probe and nothing
 # else. It never writes, never edits, never creates, and above all never
@@ -32,6 +31,14 @@
 #
 # Usage:
 #   check-requires.sh <path-to-pack.yaml>
+#   check-requires.sh <label>=<pack.yaml> [...]
+#
+# The labelled form is the route driver's, after pre-flight and before intake:
+# every line goes to stdout prefixed with its pack's label — "ok: <label>
+# <tool>", "ok: <label> no requirements declared", "missing: <label> <tool> —
+# <remedy>" — then one total line when anything is missing. Its exit codes
+# are those below, over all packs; a malformed pack's reason is prefixed
+# "<label>:".
 #
 # Exit codes:
 #   0 — every declared tool is present, or none is declared; one
@@ -44,6 +51,35 @@
 #       this script only refuses to guess at it)
 
 set -uo pipefail
+
+if [[ "${1:-}" == *=* ]]; then
+  for arg in "$@"; do
+    [[ "$arg" == *=* ]] || { echo "usage: check-requires.sh <label>=<pack.yaml> [...]" >&2; exit 2; }
+  done
+  missing_total=0
+  checked_total=0
+  status=0
+  for arg in "$@"; do
+    label="${arg%%=*}"
+    out="$(bash "${BASH_SOURCE[0]}" "${arg#*=}" 2>&1)"
+    rc=$?
+    if (( rc == 2 )); then
+      echo "$label: $out" >&2
+      exit 2
+    fi
+    (( rc == 1 )) && status=1
+    while IFS= read -r line; do
+      case "$line" in
+        "ok: "*) echo "ok: $label ${line#ok: }"
+                 [[ "$line" == "ok: no requirements declared" ]] || checked_total=$((checked_total + 1)) ;;
+        "missing: "*) echo "missing: $label ${line#missing: }"
+                      missing_total=$((missing_total + 1)); checked_total=$((checked_total + 1)) ;;
+      esac
+    done <<< "$out"
+  done
+  (( missing_total > 0 )) && echo "$missing_total of $checked_total declared tools are missing; nothing was installed"
+  exit "$status"
+fi
 
 FILE="${1:-}"
 

@@ -1,5 +1,5 @@
 ---
-description: The verify stage (core contract §4) — always runs; checks behaviour and responsiveness through the browser role's render/capture/measure operations, comparing against eds-baseline's capture where one exists and against eds-extract's design reference where the design stages ran on this item. Where the browser pack also supports the interact operation (D69), acts on the target block to check behaviour a load-time read cannot — an exclusive open/close, a state attribute staying in sync across a toggle, keyboard activation — reporting each such criterion as checked-and-failed, checked-and-passed, or explicitly not attempted, never a silent pass. Normalises whatever the browser pack returns into this platform's own finding, never returns a provider operation's output unchanged.
+description: The verify stage (core contract §4) — always runs; checks behaviour and responsiveness through the browser role's render/capture/measure operations, records one result per acceptance criterion and fails when any criterion was never exercised (judged by a script, so an unchecked criterion can never pass), builds a generated fixture from the item's criteria, comparing against eds-baseline's capture where one exists and against eds-extract's design reference where the design stages ran on this item. Where the browser pack also supports the interact operation (D69), acts on the target block to check behaviour a load-time read cannot — an exclusive open/close, a state attribute staying in sync across a toggle, keyboard activation — reporting each such criterion as checked-and-failed, checked-and-passed, or explicitly not attempted, never a silent pass. Normalises whatever the browser pack returns into this platform's own finding, never returns a provider operation's output unchanged.
 context: fork
 ---
 
@@ -66,6 +66,8 @@ digraph eds_verify {
     "Capture and measure the rendered page" [shape=box];
     "Check behaviour through interact, where supported" [shape=box];
     "Compare against baseline and design reference where available" [shape=box];
+    "Record a result per criterion" [shape=box];
+    "Every criterion exercised?" [shape=diamond];
     "Any acceptance criterion failed outright?" [shape=diamond];
     "Any check downgraded or skipped?" [shape=diamond];
     "Report fail" [shape=doublecircle];
@@ -98,7 +100,10 @@ digraph eds_verify {
     "Capture and measure the rendered page" -> "Report fail" [label="widths script: exit 2"];
     "Capture and measure the rendered page" -> "Report fail" [label="regression script: exit 2"];
     "Check behaviour through interact, where supported" -> "Compare against baseline and design reference where available";
-    "Compare against baseline and design reference where available" -> "Any acceptance criterion failed outright?";
+    "Compare against baseline and design reference where available" -> "Record a result per criterion";
+    "Record a result per criterion" -> "Every criterion exercised?";
+    "Every criterion exercised?" -> "Any acceptance criterion failed outright?" [label="exit 0, or the item has no criteria"];
+    "Every criterion exercised?" -> "Report fail" [label="exit 1 or 2"];
     "Any acceptance criterion failed outright?" -> "Report fail" [label="yes"];
     "Any acceptance criterion failed outright?" -> "Any check downgraded or skipped?" [label="no"];
     "Any check downgraded or skipped?" -> "Report warn" [label="yes"];
@@ -220,7 +225,21 @@ than reporting nothing to check against at all.
 
 ### Generate a fixture
 
-Invoke `Skill(agentic-eds:eds-fixture)` with:
+**First, build it from the criteria.** Run
+`bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/list-criteria.sh .ai/run-context/sanitized-spec.md`.
+When it prints criterion ids, read each criterion and pick the one case that holds what it talks
+about — `empty` (a cell with no child and no text), `whitespace` (a cell holding only
+whitespace), `empty-row` (a row whose cells are all empty), `picture` (a cell holding only a
+picture), `text` (ordinary text cells), `page` (about the page as a whole, such as console
+errors), or `none` with a reason when no case can hold it. Write them to
+`.ai/run-context/fixture-cases.tsv`, one tab-separated line per criterion, and invoke
+`Skill(agentic-eds:eds-fixture)` with `block`, `item_id` and
+`cases: .ai/run-context/fixture-cases.tsv`. Choosing the case is the one judgement here; the
+markup is the script's. A `none` case is not a way around a hard criterion: that criterion is
+reported not exercised and this stage fails on it, which is the honest answer.
+
+**Only when the item has no criterion id** (`list-criteria.sh` exit `1`, typical of a bug report)
+invoke `Skill(agentic-eds:eds-fixture)` with the placeholder grid instead:
 
 ```
 block: <the first target block name from Target block identified?>
@@ -468,9 +487,44 @@ stages were supposed to produce a reference by this point, not that one necessar
 this pack's current state, and a missing reference here is reported, never treated as a design
 match by default.
 
+### Record a result per criterion
+
+When `list-criteria.sh` prints criterion ids, write `.ai/run-context/criteria-results.tsv`: one
+tab-separated line per criterion, `<AC-id> <status> <evidence>`, status one of:
+
+- `passed` — a check above ran against content that holds this criterion's case and saw what the
+  criterion asks for; the evidence names the operation and the value (a selector `found: false`,
+  a class present, a `console_errors` count).
+- `failed` — such a check ran and saw something else; the evidence says what.
+- `not-attempted` — nothing above checked it: no operation can observe it, the content holds no
+  case for it, or the check's own call did not complete. The evidence says which.
+
+A criterion you did not check is `not-attempted`, never `passed` — this file is what decides
+whether the stage may pass at all, so a guess in it is worse than a gap. Then run:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/check-criteria-coverage.sh \
+  --spec .ai/run-context/sanitized-spec.md --results .ai/run-context/criteria-results.tsv \
+  [--cases drafts/<item_id>.cases.tsv]
+```
+
+Pass `--cases` when the rendered target is a fixture composed from cases. Copy its output into
+`verify-report.md` under `## Criteria`, verbatim, and list `.ai/run-context/criteria-results.tsv`
+among the artifacts of whichever report this stage ends in.
+
+### Every criterion exercised?
+
+Exit `0` — go to **Any acceptance criterion failed outright?**. The item has no criterion id
+(`list-criteria.sh` exit `1`) — note that in `verify-report.md` and go the same way. Exit `1` — go
+to **Report fail**, naming every `not-exercised:` criterion: a criterion nobody exercised is not
+met, and this stage cannot pass with one. Exit `2` — go to **Report fail** with its `malformed:`
+line: the results file is wrong, and it is this stage's own file to correct on the next run.
+
 ### Any acceptance criterion failed outright?
 
 Any of the following, on the evidence gathered above, is a hard failure:
+
+- A criterion's result in `criteria-results.tsv` is `failed`.
 
 - The render operation's own `console_errors` count is greater than zero.
 - The breakpoint regression check (**Capture and measure the rendered page**, step 4) printed a
@@ -522,7 +576,10 @@ Any of the following is true — go to **Report warn**:
   operation, because no interactive element could be identified in the block's own source, or
   because a specific check's own `interact` call itself returned `fail`/`question` rather than
   completing — reported plainly as **not attempted**, distinct from a check that ran and passed.
-  Never omitted from `verify-report.md` and never folded silently into a clean pass.
+  Never omitted from `verify-report.md` and never folded silently into a clean pass. This
+  downgrade covers only checks no acceptance criterion depends on: a criterion that needed one is
+  already `not-attempted` in `criteria-results.tsv`, and the stage failed at **Every criterion
+  exercised?**.
 - The rendered target came from **Generate a fixture**, not from an existing page this stage
   located. This run proves the unit decorates, renders at three widths and responds to
   interaction; it proves nothing about any acceptance criterion concerning real copy or real
