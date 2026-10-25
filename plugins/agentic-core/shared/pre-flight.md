@@ -25,6 +25,11 @@ A fourth item is not a check at all but a **notice** (D94): when the platform pa
 it. It reads two values the project config already declares, reaches nothing, and has no failing
 verdict.
 
+A fifth check reads what the configured packs declare a project must provide — the variables they
+read and the hosts they reach — against this process's environment and the committed settings file.
+It answers presence, never whether a credential works; that is the credential checks' question,
+asked by the route driver right after pre-flight (below).
+
 ## Why never a health check
 
 A capability probe that shells out to test whether a tool process is alive is coupled to how that
@@ -62,7 +67,7 @@ states the path; the test asks nothing about a running process, a network condit
 own liveness — only whether a file the pack expects is there. This is what "structural" still means
 for a check that, unlike the first two, is not purely about the pack in isolation.
 
-## The three checks, and the notice
+## The checks, and the notice
 
 1. **Every pack project config requires is installed.** For every role `packs:` names — `platform`,
    `tracker`, `scm`, `browser` always; `design` only when its value is not `none` — a pack manifest
@@ -122,6 +127,22 @@ for a check that, unlike the first two, is not purely about the pack in isolatio
    runner's own branching. It is emitted before `intake`, which is the whole point of putting it
    here: the `serve` stage runs some way into a route, and a route that will need a preview should
    say so before it starts spending outbound calls.
+5. **The environment the configured packs declare (D140).** For every `role=path` given,
+   `lib/check-pack-environment.sh` reads the manifest's `env` and `hosts` (`pack-manifest.md`,
+   **Declarations — either kind**): each variable set in this process's environment and not a
+   `FILL-IN:` placeholder, each host in the committed settings' `sandbox.network.allowedDomains`. A
+   missing, unfilled or blocked line blocks the run, naming every one. A value is never printed,
+   and a set variable is never called working — this check answers presence only. It reads files
+   and the process environment and reaches nothing, so it stays inside this file's ban.
+
+## After pre-flight: the credential checks
+
+Whether a credential actually reaches what a run needs is a network question, so pre-flight does
+not ask it. The route driver asks it next, before `intake` and before any branch, run state or
+marker exists: `lib/check-credentials.sh` over the same `role=path` pairs, running each pack's
+declared `credential_checks:`. A failing check ends the run `blocked` with the declared remedy. A
+pass is reported as the check's own `proves` text, never as "the credential works". `health` runs
+the same script on demand.
 
 ## What a failure produces
 
@@ -205,15 +226,24 @@ for its own integration cases.
 
 ## Verification
 
-`lib/check-preflight.sh <project-config path> <role>=<path-to-pack.yaml> [<role>=<path> …]` — one
+`lib/check-preflight.sh [--settings <path>] <project-config path> <role>=<path-to-pack.yaml> [<role>=<path> …]` — one
 `role=path` pair per role project config requires (`role` one of `platform`, `tracker`, `scm`,
 `design`, `browser`). No model involved, no side effects. Exits `0` and prints `ready` plus one
 `<role>: ok` line per role checked (`design: none` when config declares no design pack is
 required), then check 3's own line(s) when the platform pack declares either onboarding path
 (omitted entirely when it declares neither), then the notice's own line when that pack declares a
-`serve` stage (omitted entirely when it does not); `1` with `invalid: <reason>` on stderr for the
-first check that fails; `2` for a usage error (no config argument, config not found, a malformed
-`role=path` pair, an unrecognized role name).
+`serve` stage (omitted entirely when it does not), then `environment: ok` and any `login: …` line
+check 5 printed; `1` with `invalid: <reason>` on stderr for the first check that fails; `2` for a
+usage error (no config argument, config not found, a malformed `role=path` pair, an unrecognized
+role name). `--settings` names the committed settings file check 5 reads (default
+`.claude/settings.json`, relative to the working directory).
+
+`lib/check-pack-environment.sh [--settings <path>] <label>=<pack.yaml> …` is check 5 on its own.
+Exits `0` when nothing is missing, unfilled or blocked, `1` otherwise, `2` for a usage error or a
+settings file of the wrong shape. `lib/check-credentials.sh <label>=<pack.yaml> …` is the step after
+pre-flight: exits `0` with `ok: … — proves only: …` per passing check (or `none: …` per pack that
+declares none), `1` with `failed: … — <remedy>` per failing one, `2` for a usage error or a
+malformed block.
 
 `lib/check-onboarding-gate.sh <path-to-platform-pack.yaml>` is check 3 on its own — reusable
 standalone, and what `check-preflight.sh` delegates to. Resolves each declared path relative to the
@@ -230,4 +260,6 @@ own — reusable standalone, and what `check-preflight.sh` delegates to. Exits `
 bash plugins/agentic-core/shared/lib/check-preflight.test.sh
 bash plugins/agentic-core/shared/lib/check-onboarding-gate.test.sh
 bash plugins/agentic-core/shared/lib/check-serve-notice.test.sh
+bash plugins/agentic-core/shared/lib/check-pack-environment.test.sh
+bash plugins/agentic-core/shared/lib/check-credentials.test.sh
 ```
