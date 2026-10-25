@@ -264,6 +264,21 @@ printf '%s\n' 'drafts/' > "$WORK/../working-paths.txt"
 OUT=$(bash "$CHECK" "$WORK" --exclude-file "$WORK/../working-paths.txt" 2>&1); ST=$?
 assert_exit "criterion 2 still holds (exit 1)" 1 $ST "$OUT"
 
+echo "[working paths] a working path already committed on the branch is refused, not dropped"
+WORK="$(new_fixture working-paths-committed)"
+(
+  cd "$WORK"
+  git checkout --quiet -b task-branch
+  echo "line2" >> README.md
+  mkdir -p .ai/run-context
+  echo "token" > .ai/run-context/notes.txt
+  git add -A && git commit --quiet -m "carries a run file"
+)
+printf '%s\n' '.ai/run-context/' > "$WORK/../working-paths.txt"
+OUT=$(bash "$CHECK" "$WORK" --exclude-file "$WORK/../working-paths.txt" 2>&1); ST=$?
+assert_exit "the push would carry it (exit 1)" 1 $ST "$OUT"
+assert_contains "names the committed working path" ".ai/run-context/notes.txt" "$OUT"
+
 echo "[usage] no argument"
 OUT=$(bash "$CHECK" 2>&1); ST=$?
 assert_exit "no arg -> usage error (exit 2)" 2 $ST "$OUT"
