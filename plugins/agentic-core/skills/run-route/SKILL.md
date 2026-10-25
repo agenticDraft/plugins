@@ -409,23 +409,28 @@ Then go to **Check credentials**.
 
 ### Check credentials
 
-Run, with the same `role=path` pairs pre-flight was given:
+Run both, in this order, with the same `role=path` pairs pre-flight was given:
 
 ```
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-requires.sh \
+  platform=<path> tracker=<path> scm=<path> browser=<path> [design=<path>]
 ${CLAUDE_PLUGIN_ROOT}/shared/lib/check-credentials.sh \
   platform=<path> tracker=<path> scm=<path> browser=<path> [design=<path>]
 ```
 
-It runs each pack's declared credential checks (`shared/pre-flight.md`, **After pre-flight: the
-credential checks**) and prints no value.
+The first probes the tools each pack declares under `requires:`; the second runs each pack's
+declared credential checks (`shared/pre-flight.md`, **After pre-flight: the tool and credential
+checks**). Neither prints a value. Run the second even when the first fails, so the human sees
+every missing thing at once.
 
 ### Credentials proven?
 
-- **Exit `1`:** no branch, run state or marker exists yet. Report `terminal: blocked` immediately,
-  quoting every `failed:` line verbatim — each carries the remedy its pack declared — as an
-  environment problem, never recorded anywhere. Route to **blocked**; do not proceed.
-- **Exit `2`:** the same, naming the line it printed; a pack's manifest is at fault.
-- **Exit `0`:** print its `ok:` and `none:` lines to the human verbatim. Each `ok:` says what it
+- **Either exits `1`:** no branch, run state or marker exists yet. Report `terminal: blocked`
+  immediately, quoting every `missing:` and `failed:` line verbatim — each carries the remedy its
+  pack declared — as an environment problem, never recorded anywhere. Never run a remedy. Route to
+  **blocked**; do not proceed.
+- **Either exits `2`:** the same, naming the line it printed; a pack's manifest is at fault.
+- **Both exit `0`:** print their `ok:` and `none:` lines to the human verbatim. Each `ok:` says what it
   proves and nothing more; do not call a credential "working" beyond that text. Then go to
   **Check run-state**.
 
@@ -981,4 +986,4 @@ gate, none for every other stage). The adapter reads its answer itself from the 
 - Inferring mode from anything other than the exact trailing `autonomous` token in `$ARGUMENTS` —
   a work item summary that sounds like it wants no interruptions is not a flag (core contract §8).
 
-<!-- instructions-stamp: 4c4c15b02b08 -->
+<!-- instructions-stamp: 02876ca43375 -->

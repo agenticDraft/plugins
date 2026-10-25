@@ -42,6 +42,11 @@
 #     before `config_derivation`; a provider pack after `text_conventions`
 #     and before `session_tools`.
 #
+#   platform only, after `config_derivation` and before `reference_docs` —
+#     `setup_skill` (validator 29, D141): one double-quoted skill name this
+#     pack ships as `skills/<name>/SKILL.md`, which the core's setup invokes
+#     last.
+#
 #   provider — `role` is one of the four core roles; every key in
 #     `operations` and every entry in `unsupported` is an operation that
 #     role actually has; the two sets are disjoint; together they cover
@@ -699,6 +704,19 @@ if [[ "$kind" == "platform" ]]; then
     cursor=$((cursor + 1))
   fi
 
+  # --- setup_skill (validator 29, D141) --------------------------------------
+  # Optional. A skill this pack ships, which the core's setup invokes by name as
+  # its last step. A bare skill name, never a path; the skill must exist.
+  if [[ "${LINES[cursor]:-}" =~ ^setup_skill:\ (.*)$ ]]; then
+    value="${BASH_REMATCH[1]}"
+    [[ "$value" =~ ^\"([a-z][a-z0-9-]*)\"$ ]] \
+      || fail "setup_skill must be one double-quoted skill name (lower-case letters, digits and '-'), got '$value'"
+    setup_skill="${BASH_REMATCH[1]}"
+    [[ -f "$PACK_ROOT/skills/$setup_skill/SKILL.md" ]] \
+      || fail "setup_skill names a skill this pack does not ship: '$setup_skill'"
+    cursor=$((cursor + 1))
+  fi
+
   # --- reference_docs (validator 23, D117) ----------------------------------
   # Optional, the last platform key. The platform's official reference, read by
   # a stage or the authoring skill before deciding a question no project rule
@@ -959,6 +977,10 @@ if [[ "$kind" == "provider" ]]; then
 
   if [[ "${LINES[cursor]:-}" =~ ^config_derivation: ]]; then
     fail "config_derivation belongs to a platform pack, not a provider pack"
+  fi
+
+  if [[ "${LINES[cursor]:-}" =~ ^setup_skill: ]]; then
+    fail "setup_skill belongs to a platform pack, not a provider pack"
   fi
 
   if (( cursor < n )); then

@@ -111,7 +111,21 @@ authoring_examples_path: "work-item-examples"
 evidence_manifest: evidence-manifest
 branch_name:
   pattern: "^[a-z0-9/-]+$"
+requires:
+  - tool: aem-cli
+    probe: [bash, <pack>/shared/scripts/check-local-cli.sh]
+    remedy: "add the CLI to the project's own dev dependencies before the run (npm install --save-dev @adobe/aem-cli), then commit package.json and the lock file"
 hosts: ["*.aem.page"]
 ignore_paths: ["drafts/"]
+credential_checks:
+  - check: preview-config
+    probe: [bash, <pack>/shared/scripts/check-preview-config.sh]
+    proves: "the config's preview host suffix and branch limit match the current origin remote; not that the host answers"
+    remedy: "the repository's owner or name changed since setup: run agentic-core:setup again and choose re-detect"
+  - check: preview-host
+    probe: [bash, <pack>/shared/scripts/check-preview-host.sh]
+    proves: "the default branch's preview host serves this repository's code; not that any page or content exists"
+    remedy: "install the AEM Code Sync app (github.com/apps/aem-code-sync) on this repository's owner with this repository included, then push to the default branch"
 config_derivation: "shared/scripts/derive-config.sh"
+setup_skill: "eds-setup"
 reference_docs: "https://developer.mozilla.org/en-US/"
