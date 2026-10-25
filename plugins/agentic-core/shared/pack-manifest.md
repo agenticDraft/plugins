@@ -46,6 +46,11 @@ env:                                       # optional
     source: "<where a human gets the value>"
 hosts: ["<host>", "*.<domain>", …]         # optional
 ignore_paths: ["<relative path>", …]       # optional
+credential_checks:                         # optional
+  - check: <identifier>
+    probe: [<argv>, …]
+    proves: "<what a pass shows, and what it does not>"
+    remedy: "<what a human does to fix it>"
 config_derivation: "<relative path>"       # optional; a script, relative to the pack root
 reference_docs: "<https url>"              # optional; last
 ```
@@ -75,6 +80,11 @@ env:                            # optional
     source: "<where a human gets the value>"
 hosts: ["<host>", "*.<domain>", …]   # optional
 ignore_paths: ["<relative path>", …] # optional
+credential_checks:              # optional
+  - check: <identifier>
+    probe: [<argv>, …]
+    proves: "<what a pass shows, and what it does not>"
+    remedy: "<what a human does to fix it>"
 session_tools:                  # optional; last
   - tool: <exact tool name>
     remedy: "<what a human does to fix it>"
@@ -90,10 +100,11 @@ Fixed per kind, in order.
   `onboarding_state_path`, `audit_findings_path` (D80) and `audit_digest_path` (G500) are the
   exceptions to "all required" — all three optional, and a pack may declare any subset of them,
   including none. So is `authoring_examples_path` (D132), which follows them. After `branch_name`
-  come the four optional declarations `requires`, `env`, `hosts`, `ignore_paths`, then the optional
-  `config_derivation`, then `reference_docs` last.
+  come the five optional declarations `requires`, `env`, `hosts`, `ignore_paths`,
+  `credential_checks`, then the optional `config_derivation`, then `reference_docs` last.
 - **provider** — `kind`, `role`, `operations`, `unsupported`, `scripts`, `text_conventions` for
-  the `tracker` role, `requires`, `env`, `hosts`, `ignore_paths`, `session_tools`. The first four are
+  the `tracker` role, `requires`, `env`, `hosts`, `ignore_paths`, `credential_checks`,
+  `session_tools`. The first four are
   required; `unsupported` may be empty (`[]`) but must be present. Every key after `unsupported` is
   optional.
 
@@ -313,6 +324,9 @@ digraph route {
 - `config_derivation` that is not double-quoted, is empty, absolute or contains a `..` segment, names
   a file that does not exist, comes before `ignore_paths` or after `reference_docs`, or appears on a
   provider manifest.
+- `credential_checks` present but empty, out of the fixed order, with a `check` that is not an
+  identifier or is declared twice, a `probe` given as a string, empty, or naming a `<pack>/` file that
+  does not exist, or a `proves` or `remedy` missing or empty (validator 28).
 - `reference_docs` that is not one double-quoted `https` URL, or any key after it.
 - Any file under the pack root containing the literal sequence `{{`, the reserved marker for an
   unfilled template placeholder. A generated pack that still carries one is a failed setup, not a
@@ -398,10 +412,10 @@ digraph route {
 
 ## Declarations — either kind
 
-Four optional keys say what a project must provide for a pack, in this fixed order: `requires`,
-`env`, `hosts`, `ignore_paths`. A platform pack declares them after `branch_name` and before
-`reference_docs`; a provider pack after `text_conventions` and before `session_tools`. Each is absent
-when the pack needs nothing of its kind, never present and empty.
+Five optional keys say what a project must provide for a pack, in this fixed order: `requires`,
+`env`, `hosts`, `ignore_paths`, `credential_checks`. A platform pack declares them after
+`branch_name` and before `config_derivation`; a provider pack after `text_conventions` and before
+`session_tools`. Each is absent when the pack needs nothing of its kind, never present and empty.
 
 - `requires` — as under **Field rules — provider**, with the same shape and the same readers on a
   platform pack.
@@ -429,6 +443,29 @@ when the pack needs nothing of its kind, never present and empty.
   committed, as a bracket list of double-quoted entries; a directory ends in `/`. No leading `/`, no
   `..` segment, no glob character, backslash or space: what the ignore file hides and what delivery
   excludes must be the same literal path. Each path at most once.
+- `credential_checks` — how this pack proves that the credential its operations use reaches what
+  they need. Each entry declares exactly four things, in this order:
+  - `check` — an identifier: lower-case letters, digits and `-`, starting with a letter; each at most
+    once.
+  - `probe` — argv, never a string, judged by exit status alone: `0` passes. An argument prefixed
+    `<pack>/` names a file the pack ships, resolved against the pack root, and must exist. Its output
+    is discarded, so nothing it prints reaches a report. It runs in the project's checkout.
+  - `proves` — quoted text saying what a pass shows **and what it does not**. A report prints it on a
+    pass in place of "works", because a check that reaches a service rarely proves every permission
+    a run will use.
+  - `remedy` — quoted text for a human, printed on a failure; never executed.
+  A probe may reach the network, so pre-flight never runs one. `lib/check-credentials.sh` does, for
+  two readers: `health`, on demand, and the route driver, after pre-flight passes and before
+  `intake`, ending the run `blocked` with the remedy on a failure. A pack that declares none is
+  reported as unproven, never as passing.
+
+**Who checks them before a run.** `lib/check-pack-environment.sh` reads `env` and `hosts` for the
+packs it is given: each variable set in the process environment and not a `FILL-IN:` placeholder —
+never printed, and reported as present, never as working; a variable with `login_alternative` may
+be unset or empty, since the login stands in, but a placeholder in it fails, because it breaks the
+login; each host in the committed settings' `sandbox.network.allowedDomains` — a literal host is met
+by itself or by a `*.<domain>` entry it ends in, a `*.<domain>` only by that same entry. Offline.
+Pre-flight (check 5) and `health` both run it.
 
 **The core's own paths** are not a manifest key. `run-paths.txt` lists them, one per line:
 `ignore <path>` for a file a run writes and never commits, `commit <path>` for a project file
@@ -581,4 +618,7 @@ bash plugins/agentic-core/shared/lib/write-sandbox-hosts.test.sh
 bash plugins/agentic-core/shared/lib/write-ignore-rules.test.sh
 bash plugins/agentic-core/shared/lib/name-files-to-commit.test.sh
 bash plugins/agentic-core/shared/lib/setup-project-files.test.sh
+bash plugins/agentic-core/shared/lib/resolve-configured-packs.test.sh
+bash plugins/agentic-core/shared/lib/check-pack-environment.test.sh
+bash plugins/agentic-core/shared/lib/check-credentials.test.sh
 ```
