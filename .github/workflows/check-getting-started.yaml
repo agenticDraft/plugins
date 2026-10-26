@@ -1,0 +1,35 @@
+name: Check getting-started guide
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/getting-started.md'
+      - 'plugins/*/pack.yaml'
+      - 'plugins/agentic-core/shared/run-paths.txt'
+      - 'plugins/agentic-core/shared/lib/validate-pack-manifest.sh'
+      - 'scripts/render-guide-declarations*'
+      - 'scripts/check-getting-started*'
+      - '.github/workflows/check-getting-started.yaml'
+  pull_request:
+    # No branch filter on purpose, as in validate-agentic-core.yaml.
+    paths:
+      - 'plugins/getting-started.md'
+      - 'plugins/*/pack.yaml'
+      - 'plugins/agentic-core/shared/run-paths.txt'
+      - 'plugins/agentic-core/shared/lib/validate-pack-manifest.sh'
+      - 'scripts/render-guide-declarations*'
+      - 'scripts/check-getting-started*'
+      - '.github/workflows/check-getting-started.yaml'
+
+jobs:
+  guide:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: the renderer and the check themselves
+        run: |
+          bash scripts/render-guide-declarations.test.sh
+          bash scripts/check-getting-started.test.sh
+      - name: the guide against the packs' declarations
+        run: bash scripts/check-getting-started.sh
