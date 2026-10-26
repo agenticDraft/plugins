@@ -1,18 +1,19 @@
 ---
-description: The platform half of project setup, invoked by agentic-core:setup as its last step (this pack's declared setup_skill) or by a human after it. Checks the config still matches the repository's remote, names the code-sync app install for this owner/repository and waits for the human, checks the project's own install of the CLI and shows the remedy for the human to run, asks for the content source URL once and writes it to the config, writes the site's links (content editor, preview, live) into the project README, and flags concrete preview or live hosts in the project's instruction files that no longer match. Every file change is made by a script. Never installs, never asks for or writes a credential or an identifier, never reads or writes the site's user list.
+description: The platform half of project setup, invoked by agentic-core:setup as its last step (this pack's declared setup_skill) or by a human after it. Checks the config still matches the repository's remote, names the code-sync app install for this owner/repository and waits for the human, notes a serve command that downloads the CLI on every start (the CLI's own install is offered by the core setup from this pack's declaration), asks for the content source URL once and writes it to the config, writes the site's links (content editor, preview, live) into the project README, and flags concrete preview or live hosts in the project's instruction files that no longer match. Every file change is made by a script. Never installs, never asks for or writes a credential or an identifier, never reads or writes the site's user list.
 ---
 
 # eds-setup
 
 The core's `setup` writes a config that is valid; this skill makes sure the platform can actually
 serve this repository before the first run needs it. Each thing checked here is something a run
-would otherwise discover mid-way: a preview host nothing syncs code to, a CLI the draft server
-cannot find, a host name in an instruction file that points at a site that is no longer this one.
+would otherwise discover mid-way: a preview host nothing syncs code to, a serve command that fetches
+a different CLI than the draft server uses, a host name in an instruction file that points at a
+site that is no longer this one.
 
 Run every script from the project root. `<config>` is `.ai/project-config.yaml`. This skill asks
 only what nothing in the project can answer — whether a human finished a step outside this
-session, and the content source URL. It installs nothing: a remedy is shown for the human to run,
-because a tool that installs its own dependencies changes the machine it was asked to inspect.
+session, and the content source URL. It installs nothing: the CLI this pack requires is checked,
+and its declared install offered, by the core `setup` before it hands over here.
 Personal values follow `${CLAUDE_PLUGIN_ROOT}/core/personal-values.md`.
 
 ## Flow
@@ -24,9 +25,7 @@ digraph eds_setup {
     "Name the code-sync install" [shape=box];
     "Code sync done?" [shape=diamond];
     "Check the preview host" [shape=box];
-    "Check the CLI install" [shape=box];
-    "CLI present?" [shape=diamond];
-    "Show the CLI remedy" [shape=box];
+    "Check the serve command" [shape=box];
     "Content source in the config?" [shape=diamond];
     "Ask for the content source" [shape=box];
     "Write the content source" [shape=box];
@@ -40,12 +39,9 @@ digraph eds_setup {
     "Config matches the remote?" -> "Report fail" [label="exit 1"];
     "Name the code-sync install" -> "Code sync done?";
     "Code sync done?" -> "Check the preview host" [label="Done"];
-    "Code sync done?" -> "Check the CLI install" [label="Later"];
-    "Check the preview host" -> "Check the CLI install";
-    "Check the CLI install" -> "CLI present?";
-    "CLI present?" -> "Content source in the config?" [label="exit 0"];
-    "CLI present?" -> "Show the CLI remedy" [label="exit 1"];
-    "Show the CLI remedy" -> "Content source in the config?";
+    "Code sync done?" -> "Check the serve command" [label="Later"];
+    "Check the preview host" -> "Check the serve command";
+    "Check the serve command" -> "Content source in the config?";
     "Content source in the config?" -> "Write the site links" [label="yes"];
     "Content source in the config?" -> "Ask for the content source" [label="no"];
     "Ask for the content source" -> "Write the content source";
@@ -82,31 +78,22 @@ with the owner's admin rights. Then ask with `AskUserQuestion`: **Done** or **La
 
 **Done** — go to **Check the preview host**. **Later** — note for the report that the code-sync
 step is still open and that every run will stop before intake until it is done (the pack's
-`preview-host` check), then go to **Check the CLI install**.
+`preview-host` check), then go to **Check the serve command**.
 
 ### Check the preview host
 
 Run `bash ${CLAUDE_PLUGIN_ROOT}/shared/scripts/check-preview-host.sh`. Exit `0`: the default
 branch's preview host serves this repository's code — say exactly that, not that the site works.
 Exit `1`: quote its stderr line; the app is not covering the repository yet, or nothing has been
-pushed to the default branch since it was installed. Either way, go on.
+pushed to the default branch since it was installed. Either way, go to **Check the serve command**.
 
-### Check the CLI install
+### Check the serve command
 
-Run `bash ${CLAUDE_PLUGIN_ROOT}/core/lib/check-requires.sh platform=${CLAUDE_PLUGIN_ROOT}/pack.yaml`
-and report its lines verbatim. Also read `<config>`'s `commands.serve`: when it holds `npx -y` or
-`npx --yes`, say that it downloads the CLI on every start while the draft server uses only the
-project's own install, and that `npm run`-style use of the local install keeps both the same.
-
-### CLI present?
-
-Exit `0` — go to **Content source in the config?**. Exit `1` — go to **Show the CLI remedy**.
-
-### Show the CLI remedy
-
-Show the `missing:` line's remedy as the command for the human to run, and say why it is asked
-now: the draft server stops without it, and installing it during a run changes tracked files the
-run then refuses to publish. Never run it yourself. Note it for the report as open.
+Read `<config>`'s `commands.serve`. When it holds `npx -y` or `npx --yes`, say that it downloads
+the CLI on every start while the draft server uses only the project's own install, and that
+`npm run`-style use of the local install keeps both the same. Whether that install exists is not
+this skill's question: the core `setup` checks this pack's `requires:` before handing over, and
+offers the install the manifest declares.
 
 ### Content source in the config?
 
@@ -153,7 +140,7 @@ Then end with that envelope's `## Result` block, unchanged.
 ### Report
 
 State, per step: the config check; the code-sync step (done and proven, done but the host did not
-answer, or later); the CLI (present, or the remedy still to run); the content source (kept, written
+answer, or later); the serve command (local, or downloading per start); the content source (kept, written
 or skipped); the README (created, updated, unchanged); each stale host. Then:
 
 ```
@@ -161,6 +148,6 @@ bash ${CLAUDE_PLUGIN_ROOT}/core/lib/emit-envelope.sh .ai/run-context/envelope-ed
   --verdict <pass|warn> --summary "<one sentence, at most 200 characters>" [--artifact <path>]…
 ```
 
-`pass` only when the host answered, the CLI is present and no host is stale; otherwise `warn`,
+`pass` only when the host answered and no host is stale; otherwise `warn`,
 naming the first open step. Artifacts: the README and the config when this skill changed them.
 End with that envelope's `## Result` block, unchanged.

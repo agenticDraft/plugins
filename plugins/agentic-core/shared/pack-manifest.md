@@ -40,6 +40,7 @@ branch_name:                               # optional
 requires:                                  # optional; see Declarations — either kind
   - tool: <identifier>
     probe: [<argv>, …]
+    install: [<argv>, …]                    # optional
     remedy: "<what a human runs to fix it>"
 env:                                       # optional
   - name: <VARIABLE_NAME>
@@ -75,6 +76,7 @@ text_conventions:               # tracker role only
 requires:                       # optional
   - tool: <identifier>
     probe: [<argv>, …]
+    install: [<argv>, …]        # optional
     remedy: "<what a human runs to fix it>"
 env:                            # optional
   - name: <VARIABLE_NAME>
@@ -393,9 +395,16 @@ digraph route {
     need. Only the exit status is read: zero means present. The output is never parsed and a version
     is never compared — a version requirement is a second question this key deliberately cannot ask,
     because answering it would mean parsing whatever the tool happened to print.
+  - `install` — optional, between `probe` and `remedy`: the argv that installs the tool, under
+    `probe`'s rules — a list, never a string, never interpolated, `<pack>/` resolved and checked the
+    same way. **One reader runs it:** the core `setup` step, through `lib/run-declared-install.sh`,
+    only after the human answers **Install now** for that tool in that session. The script runs it
+    once in the project root, asks the probe again, and names every file git shows it changed; it
+    never retries and never commits. Every other reader of `requires:` skips the line unread.
   - `remedy` — what a human runs to fix it. It is quoted text, printed verbatim by whatever reports
     the tool missing, and **nothing ever executes it**. A pack that could install its own dependency
-    would be a pack that changes the machine it was merely asked to run on.
+    would be a pack that changes the machine it was merely asked to run on. With an `install`, it
+    names the same install in words, plus what to commit.
   - **Absent means ungated**, the same rule an undeclared `unsupported:` list already follows. A
     pack that declares no `requires` has no local precondition; silence is never read as a hidden
     one.
@@ -630,6 +639,7 @@ bash plugins/agentic-core/shared/lib/validate-pack-manifest.test.sh
 bash plugins/agentic-core/shared/lib/evaluate-stage-conditions.test.sh
 bash plugins/agentic-core/shared/lib/check-session-tools.test.sh
 bash plugins/agentic-core/shared/lib/check-requires.test.sh
+bash plugins/agentic-core/shared/lib/run-declared-install.test.sh
 bash plugins/agentic-core/shared/lib/run-paths.test.sh
 bash plugins/agentic-core/shared/lib/collect-pack-declarations.test.sh
 bash plugins/agentic-core/shared/lib/write-credential-placeholders.test.sh
