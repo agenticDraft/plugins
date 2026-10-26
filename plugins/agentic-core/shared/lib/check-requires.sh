@@ -14,7 +14,9 @@
 # else. It never writes, never edits, never creates, and above all never
 # installs. `remedy` is printed for a human to act on — it is never passed to
 # a shell, because a component that could install its own dependency is a
-# component that changes the machine it was asked only to inspect.
+# component that changes the machine it was asked only to inspect. An entry's
+# optional `install` is skipped unread: only run-declared-install.sh, called by
+# the core setup step on a human's answer, runs it.
 #
 # A probe argument may carry the literal prefix `<pack>/`, which resolves
 # against the directory holding the manifest. That is how a pack whose
@@ -139,6 +141,11 @@ while (( i < n )); do
     || malformed "'$tool' has no 'probe:' list"
   probe_raw="${BASH_REMATCH[1]}"
   i=$((i + 1))
+
+  # An optional `install:` line is skipped unread. Running it belongs to the
+  # core setup step's own install script, on a human's answer; here it is
+  # never parsed, so nothing in this script could pass it to anything.
+  [[ "${LINES[i]:-}" =~ ^\ \ \ \ install: ]] && i=$((i + 1))
 
   [[ "${LINES[i]:-}" =~ ^\ \ \ \ remedy:\ \"(.*)\"$ ]] \
     || malformed "'$tool' has no 'remedy:'"

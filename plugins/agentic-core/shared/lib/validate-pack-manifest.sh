@@ -242,10 +242,10 @@ quoted_list() {
   return 1
 }
 
-# --- requires (validator 18, D97, D137) ---------------------------------------
+# --- requires (validator 18, D97, D137, D144) ---------------------------------
 # Optional, on either kind. What this pack needs present on the machine that
 # runs it, as data a script can read: per entry a `tool`, a `probe` given as
-# argv, and a `remedy` a human runs. Absent means ungated, the same rule an
+# argv, an optional `install` argv, and a `remedy` a human runs. Absent means ungated, the same rule an
 # undeclared `unsupported:` list already follows.
 #
 # Nothing here probes anything. This validator checks the shape of the
@@ -285,6 +285,25 @@ check_requires() {
         || fail "requires.$req_tool: 'probe' names a file this pack does not ship: '$probe_path'"
     done
     cursor=$((cursor + 1))
+
+    # `install` (D144) is optional and held to `probe`'s shape: argv, never a
+    # string, `<pack>/` arguments real files. Only the core setup step's own
+    # install script ever runs it; this checks the shape and nothing more.
+    if [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ install: ]]; then
+      [[ "${LINES[cursor]}" =~ ^\ \ \ \ install:\ \[(.*)\]$ ]] \
+        || fail "requires.$req_tool: expected 'install: [<argv>, …]' as a list, got '${LINES[cursor]}'"
+      bracket_list "${BASH_REMATCH[1]}"
+      [[ ${#LIST[@]} -gt 0 && -n "${LIST[0]:-}" ]] \
+        || fail "requires.$req_tool: 'install' is an empty list — omit the key when there is nothing to run"
+      for probe_arg in "${LIST[@]}"; do
+        [[ "$probe_arg" == "<pack>/"* ]] || continue
+        probe_path="${probe_arg#<pack>/}"
+        validate_declared_path "requires.$req_tool.install" "$probe_path"
+        [[ -f "$PACK_ROOT/$probe_path" ]] \
+          || fail "requires.$req_tool: 'install' names a file this pack does not ship: '$probe_path'"
+      done
+      cursor=$((cursor + 1))
+    fi
 
     [[ "${LINES[cursor]:-}" =~ ^\ \ \ \ remedy:\ \"(.*)\"$ ]] \
       || fail "requires.$req_tool: expected 'remedy: \"<what a human runs>\"', got '${LINES[cursor]:-<end of file>}'"
