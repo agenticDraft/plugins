@@ -43,7 +43,13 @@ The delivery plugins (`agentic-*`) ship offline tests, run together by `scripts/
 (cd plugins/agentic-core/shared/runner && npm ci)   # once
 bash scripts/run-tests.sh [dir ...]                 # every *.test.sh and *.test.mjs; prints files=<n> fail=<n> skipped=<n>
 bash scripts/check-plugin-versions.sh origin/main   # rule below, as CI runs it on a pull request
+bash scripts/check-getting-started.sh               # plugins/getting-started.md against every pack.yaml
+bash scripts/render-guide-declarations.sh --write plugins/getting-started.md   # refresh its generated block
 ```
+
+The guide's per-pack list of variables, hosts and tools sits between two `guide-declarations` markers and
+is rendered from the manifests; after a change to a `pack.yaml` or `run-paths.txt`, refresh it with the
+second command and commit the result.
 
 ```bash
 bash scripts/run-tests.sh plugins/agentic-core              # one plugin's suites (what CI runs)
