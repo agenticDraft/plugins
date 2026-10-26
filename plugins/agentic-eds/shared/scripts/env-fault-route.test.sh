@@ -43,11 +43,12 @@ trap 'rm -rf "$WORK"' EXIT
 
 # Stubs: nothing answers (curl 000), the CLI is not installed (npx exits at
 # once, as `npx --no-install` does without a local install), and the poll
-# ladder's waits are shortened.
+# ladder's waits are shortened. The one-second wait for an immediate exit is
+# kept whole: shortened, it can end before the stubbed server has exited.
 mkdir -p "$WORK/bin"
 printf '#!/usr/bin/env bash\nprintf 000\n' > "$WORK/bin/curl"
 printf '#!/usr/bin/env bash\necho "npm ERR! could not determine executable to run"\nexit 1\n' > "$WORK/bin/npx"
-printf '#!/bin/sh\nexec /bin/sleep 0.3\n' > "$WORK/bin/sleep"
+printf '#!/bin/sh\n[ "$1" = 1 ] && exec /bin/sleep 1\nexec /bin/sleep 0.3\n' > "$WORK/bin/sleep"
 chmod +x "$WORK/bin/curl" "$WORK/bin/npx" "$WORK/bin/sleep"
 export PATH="$WORK/bin:$PATH"
 

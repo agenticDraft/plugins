@@ -12,6 +12,10 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE_LIB="$SCRIPT_DIR/../../core/lib"
 . "$CORE_LIB/register-source-tree.sh"
+if ! in_source_tree; then
+  echo "  skipped: not the source tree, so the other packs are not this pack's siblings"
+  exit 0
+fi
 
 PASS=0
 FAIL=0

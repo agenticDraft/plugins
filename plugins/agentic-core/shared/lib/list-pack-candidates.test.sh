@@ -38,15 +38,19 @@ fake_pack() {
 echo "=== list-pack-candidates.sh tests ==="
 
 echo "[source tree] every shipped pack listed under its role, in role order; the core has no pack.yaml"
-register_source_tree "$WORK/project" || { echo "cannot register the source tree" >&2; exit 1; }
-OUT=$(bash "$LIST" --project-dir "$WORK/project" 2>&1); ST=$?
-assert_eq "exit 0" "0" "$ST"
-assert_eq "five roles, one pack each, in role order" $'platform\ntracker\nscm\ndesign\nbrowser' "$(printf '%s\n' "$OUT" | cut -f1)"
-REGISTERED=$(ls "$WORK/project/.ai/run-context/plugin-roots")
-while IFS=$'\t' read -r role name; do
-  if printf '%s\n' "$REGISTERED" | grep -qx -- "$name"; then ok_name=1; else ok_name=0; fi
-  assert_eq "$role candidate is a registered plugin" "1" "$ok_name"
-done <<< "$OUT"
+if in_source_tree; then
+  register_source_tree "$WORK/project" || { echo "cannot register the source tree" >&2; exit 1; }
+  OUT=$(bash "$LIST" --project-dir "$WORK/project" 2>&1); ST=$?
+  assert_eq "exit 0" "0" "$ST"
+  assert_eq "five roles, one pack each, in role order" $'platform\ntracker\nscm\ndesign\nbrowser' "$(printf '%s\n' "$OUT" | cut -f1)"
+  REGISTERED=$(ls "$WORK/project/.ai/run-context/plugin-roots")
+  while IFS=$'\t' read -r role name; do
+    if printf '%s\n' "$REGISTERED" | grep -qx -- "$name"; then ok_name=1; else ok_name=0; fi
+    assert_eq "$role candidate is a registered plugin" "1" "$ok_name"
+  done <<< "$OUT"
+else
+  echo "  skipped: not the source tree, so the shipped packs are not this core's siblings"
+fi
 
 echo "[fixture] two candidates for one role, a role with none, a non-pack plugin"
 fake_pack tracker-b "kind: provider" "role: tracker"
