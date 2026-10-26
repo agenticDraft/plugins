@@ -610,10 +610,17 @@ bash ${CLAUDE_PLUGIN_ROOT}/core/lib/emit-envelope.sh \
 See `${CLAUDE_PLUGIN_ROOT}/core/result-envelope.md` for every option and what each field means. The script owns the block's spelling and refuses a field the contract does not allow on this verdict, so this stage never formats it and never has to carry it in its own final message. Values to pass:
 
 - `verdict: question`
+- `error_class: TRANSIENT` — always. The draft server is the environment, not the item, and with
+  this class the route driver ends the run `blocked` with the `blocker` below as its remedy instead
+  of asking anyone mid-run: a fix made inside the run (an install, a dependency added) changes
+  tracked files no plan step named, and `publish-gate` then refuses the change.
 - `summary`: one sentence, 200 characters or fewer (the envelope's hard cap), naming the draft
   server as what never answered.
 - `question`: states plainly that the draft server this stage needs never came up.
-- `blocker`: the script's own `no-answer:`/`start-failed:` line verbatim, followed by the literal
+- `blocker`: what a human does before starting the run again, never an offer to fix it now. When
+  the line is `start-failed: the draft server exited immediately`, the script's line followed by
+  this pack's own declared remedy for `aem-cli` (its `requires:` entry in
+  `${CLAUDE_PLUGIN_ROOT}/pack.yaml`), verbatim. Otherwise the script's own `no-answer:`/`start-failed:` line verbatim, followed by the literal
   command a human can run to check or start it themselves (`npm run up:draft`, or this project's
   own configured serve command with `--html-folder drafts` appended) — D89's own requirement that
   an escalation names something to do, not only something that failed. When the line is

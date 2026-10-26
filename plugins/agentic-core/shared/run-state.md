@@ -67,8 +67,13 @@ without rewriting the file.
 ## A fresh start begins on a clean tree
 
 Before anything of a fresh run exists — before the run context is archived, before the marker,
-the branch or any outbound call — `lib/check-tree-clean.sh <project root>` must report the tree
-clean. "Clean" is defined once, by `lib/list-changed-files.sh`: the change set the publish gate
+the branch or any outbound call — `lib/check-tree-clean.sh <project root> --exclude-file
+.ai/run-context/working-paths.txt` must report the tree clean. The working-paths file
+(`lib/write-working-paths.sh`, written by the driver right before this check and again after the
+archive) lists the core's `ignore` run paths and every configured pack's `ignore_paths`: one
+definition, read by this guard, the publish gate's change set and the deliver commit alike, so a
+fixture an earlier run left in a working path neither blocks a fresh start nor reaches a pull
+request. "Clean" is defined once, by `lib/list-changed-files.sh`: the change set the publish gate
 reviews and the deliver stage publishes — every tracked change against the merge base of the
 remote's default branch and `HEAD` (edited, staged, deleted, or committed on this branch only) and
 every untracked path the ignore rules do not exclude. The guard calls that script rather than

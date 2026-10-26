@@ -111,6 +111,19 @@ printf 'committed\n' >> "$ROOT/tracked.txt"
 commit "$ROOT" -am "on the branch only"
 refused "ahead" "tracked.txt"
 
+echo "[working paths] a declared working path left by an earlier run is not a change"
+fresh_clone
+mkdir -p "$ROOT/drafts"
+printf 'u\n' > "$ROOT/drafts/old.plain.html"
+printf '%s\n' 'drafts/' > "$TMP/working-paths.txt"
+OUT="$(bash "$GUARD" "$ROOT" --exclude-file "$TMP/working-paths.txt" 2>&1)"; ST=$?
+check "only a working path -> exit 0" "0" "$ST"
+check "only a working path -> clean" "clean: no change and no untracked path" "$OUT"
+printf 'edit\n' >> "$ROOT/tracked.txt"
+OUT="$(bash "$GUARD" "$ROOT" --exclude-file "$TMP/working-paths.txt" 2>&1)"; ST=$?
+check "a real change beside it -> exit 1" "1" "$ST"
+check "names only the real change" "$(printf 'refused: 1 paths changed before this run\nchanged: tracked.txt')" "$OUT"
+
 MARKER_REL=".ai/run-context/tree-prechecked"
 write_marker() { mkdir -p "$ROOT/.ai/run-context"; printf '%s\n' "$1" > "$ROOT/$MARKER_REL"; }
 

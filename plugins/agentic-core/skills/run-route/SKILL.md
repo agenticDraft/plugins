@@ -282,6 +282,7 @@ digraph run_route {
     "Handle question" [shape=box];
     "Question decision?" [shape=diamond];
     "Ask human, record answer" [shape=box];
+    "Tree unchanged while asked?" [shape=diamond];
     "Re-invoke the asking stage" [shape=box];
     "Asking stage is the branch step?" [shape=diamond];
     "blocked" [shape=doublecircle];
@@ -302,6 +303,7 @@ digraph run_route {
     "Fresh start: run intake" -> "blocked" [label="tree not clean"];
     "Fresh start: run intake" -> "Intake decision?";
     "Intake decision?" -> "failed" [label="terminate-failed / terminate-contract-violation"];
+    "Intake decision?" -> "blocked" [label="terminate-blocked — environment fault, remedy quoted"];
     "Intake decision?" -> "Evaluate stage conditions" [label="continue / continue-warn"];
     "Evaluate stage conditions" -> "Check session tools";
     "Check session tools" -> "Session tools present?";
@@ -327,6 +329,7 @@ digraph run_route {
     "Envelope decision?" -> "Record stage, refresh flag" [label="continue / continue-warn"];
     "Envelope decision?" -> "Handle question" [label="question"];
     "Envelope decision?" -> "failed" [label="terminate-failed / terminate-contract-violation"];
+    "Envelope decision?" -> "blocked" [label="terminate-blocked — environment fault, remedy quoted"];
     "Record stage, refresh flag" -> "Stage is readiness?";
     "Stage is readiness?" -> "Ensure the working branch" [label="yes"];
     "Stage is readiness?" -> "Stage is deliver?" [label="no"];
@@ -344,7 +347,9 @@ digraph run_route {
     "Question decision?" -> "Ask human, record answer" [label="ask"];
     "Question decision?" -> "blocked" [label="terminate-blocked"];
     "Question decision?" -> "failed" [label="terminate-failed (autonomous override)"];
-    "Ask human, record answer" -> "Re-invoke the asking stage";
+    "Ask human, record answer" -> "Tree unchanged while asked?";
+    "Tree unchanged while asked?" -> "Re-invoke the asking stage" [label="pass"];
+    "Tree unchanged while asked?" -> "blocked" [label="changed — every path named"];
     "Re-invoke the asking stage" -> "Asking stage is the branch step?";
     "Asking stage is the branch step?" -> "Ensure the working branch" [label="yes"];
     "Asking stage is the branch step?" -> "Snapshot the tree (gates only)" [label="no — same stage, same argument"];
@@ -465,17 +470,22 @@ fresh?"* using the fields `check-run-state.sh` reported.
    `<mode>` is `interactive` (the default) and `<item_id>` is `$ARGUMENTS` unchanged. Carry
    `<item_id>` and `<mode>` forward in your own working memory for the rest of the run, the same
    way `<start_time>` is carried (**Record intake stage**, step 2).
-2. **Refuse a dirty working tree, before anything of this run exists:**
+2. **Refuse a dirty working tree, before anything of this run exists.** First name the run's working
+   paths — every configured pack's `ignore_paths` and the core's own run paths — then check:
 
    ```
-   ${CLAUDE_PLUGIN_ROOT}/shared/lib/check-tree-clean.sh <project root>
+   ${CLAUDE_PLUGIN_ROOT}/shared/lib/write-working-paths.sh .ai/project-config.yaml .ai/run-context/working-paths.txt
+   ${CLAUDE_PLUGIN_ROOT}/shared/lib/check-tree-clean.sh <project root> --exclude-file .ai/run-context/working-paths.txt
    ```
 
    `<project root>` is your own working directory, absolute — the same path you later pass the gates
-   as `project_root:`. Print its output verbatim. It asks `list-changed-files.sh` for the change
-   set `publish-gate` will review and `deliver` will publish, so a path it names now is one this run
-   did not write and would carry into the change anyway (`shared/run-state.md`, "A fresh start
-   begins on a clean tree").
+   as `project_root:`. Print both outputs verbatim. The second asks `list-changed-files.sh` for the
+   change set `publish-gate` will review and `deliver` will publish, without the working paths, so a
+   path it names now is one this run did not write and would carry into the change anyway, while a
+   fixture an earlier run left behind is not (`shared/run-state.md`, "A fresh start begins on a
+   clean tree"). `write-working-paths.sh` exiting `1` — route to **blocked** with `<missing>` set to
+   its line verbatim and `<recorded-at>` set to `nowhere — refused at fresh start, before the run
+   began`.
 
    - **Exit 0** (`clean: …`) — go on to step 3.
    - **Exit 1** (`refused: <n> paths changed before this run`, then one `changed: <path>` line per
@@ -500,6 +510,10 @@ fresh?"* using the fields `check-run-state.sh` reported.
    merged manifest from the last run as its own — the stage reading it cannot tell the difference,
    and neither can you. This step belongs to a fresh start only; **Resume: re-evaluate stage
    conditions** never runs it, because the directory then holds the very run being resumed.
+
+   The archive moved `working-paths.txt` with everything else, so write it again, for this run:
+   the same `write-working-paths.sh` call as in step 2. `publish-gate` and `deliver` read it from
+   that fixed path; a resume finds it still there.
 4. Invoke the `intake` stage adapter (see "How a stage adapter is invoked" above) with the
    invocation argument `item_id: <item_id>`; `intake` needs no `fact_record`/`route`/mode input
    yet, since it is what produces the fact record. Get its envelope onto
@@ -518,6 +532,9 @@ fresh?"* using the fields `check-run-state.sh` reported.
 already held — no branch, file, or route exists — so route to **failed**. No marker and no run
 state exist yet (both are first written in **Record intake stage**), so there is nothing to
 finalize; the `finalize-orchestration-flag.sh` call on that path reports `status: not-found`.
+
+`terminate-blocked` — the tracker could not be reached (an environment fault, not the item): route
+to **blocked** as **Envelope decision?** describes, with nothing to finalize either.
 
 On `continue`/`continue-warn`: `intake`'s envelope must list the fact record among its
 `artifacts:` at `.ai/run-context/fact-record.yaml` (`shared/fact-record.md`). Go to **Evaluate
@@ -718,6 +735,16 @@ verdict is its review's. This guard is the only consequence isolation has.
 
 **`terminate-failed` / `terminate-contract-violation`** → route to **failed**.
 
+**`terminate-blocked`** (exit `4`) → the stage reported an environment fault — its envelope carries
+`error_class: TRANSIENT` or `PERMANENT`, whether its verdict is `fail` or `question`
+(`shared/stage-runner.md`). Route to **blocked** with `<missing>` set to the script's `remedy:` line
+verbatim (after `remedy: `) and `<recorded-at>` set to `<stage id> — an environment fault`. Never
+ask it as a question, never re-invoke the stage, and never run, apply or offer the remedy yourself:
+a fix made inside the run changes files the plan never named, and the gate then refuses them. The
+human fixes the environment outside the run and starts it again. In autonomous mode, first post the
+remedy on the item through the `tracker` role's `post_note`, as **Question decision?** does for a
+`write-blocker:` line, and set `<recorded-at>` to the item.
+
 ### Record stage, refresh flag
 
 - `print-progress-line.sh .ai/route-progress.txt <stage> <verdict> <summary>` — read the new
@@ -870,8 +897,17 @@ reporting; that call belongs here, at this boundary, never inside a stage.
 
 ### Ask human, record answer
 
-Put the reported `question` (and `options`, if any) to the human with `AskUserQuestion`. Write the
-answer under its key — the `next_stage` and `question_id` lines `handle-question.sh` printed:
+First snapshot the tree, so anything that changes while the question is open is seen:
+
+```
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-tree-unchanged.sh snapshot <project root> \
+  .ai/run-context/tree-before-question.txt
+```
+
+Put the reported `question` (and `options`, if any) to the human with `AskUserQuestion`. An answer
+is text: never edit, install or commit anything to act on it yourself — the asking stage reads it
+and does its own work. Write the answer under its key — the `next_stage` and `question_id` lines
+`handle-question.sh` printed:
 
 ```
 ${CLAUDE_PLUGIN_ROOT}/shared/lib/write-question-answer.sh .ai/run-context/question-answer.yaml \
@@ -884,12 +920,30 @@ answers on its re-invocation. Never write or edit the file any other way — a p
 every earlier answer (`shared/question-protocol.md`).
 
 Carry the `questions_used` value the script printed forward as the run's count — it is already
-incremented. This is not a terminal state. Go to **Re-invoke the asking stage**.
+incremented. This is not a terminal state. Go to **Tree unchanged while asked?**.
 
 Do **not** go to **Record stage, refresh flag** here. The asking stage has not finished its work —
 it stopped short of everything the answer unblocks — so recording it now would put it in
 `run-state.json` as `last_stage`, and a resumed run would skip past the one stage that still owes
 its artifacts.
+
+### Tree unchanged while asked?
+
+```
+${CLAUDE_PLUGIN_ROOT}/shared/lib/check-tree-unchanged.sh compare <project root> \
+  .ai/run-context/tree-before-question.txt .ai/run-context/question-answer.yaml
+```
+
+The answer file is the only path allowed to change while a question is open.
+
+- **Exit 0** → go to **Re-invoke the asking stage**.
+- **Exit 1** → something changed the tree while the question was open — a person, or a session
+  acting on the answer. No stage made it, so nothing in the run can say whose it is or whether the
+  plan wanted it. Route to **blocked** with `<missing>` set to `a tree unchanged while a question was
+  open:` followed by the script's `changed:` paths, and `<recorded-at>` set to `<next_stage> — the
+  question it asked`. Revert, commit or keep them is the human's call; never yours.
+- **Exit 2** → the guard could not run. Route to **failed** as a contract violation, with the
+  script's message.
 
 ### Re-invoke the asking stage
 
@@ -958,6 +1012,9 @@ gate, none for every other stage). The adapter reads its answer itself from the 
   is a stage's job, inside its own isolated subagent (the read hook above blocks such a read and
   returns the reason, so a lapse here stops rather than being recorded).
 - Retrying a stage that returned `fail`, with or without changed input.
+- Asking a human about an environment fault, or running its remedy inside the run — `run-stage.sh`'s
+  `terminate-blocked` ends the run instead.
+- Re-invoking an asking stage without `check-tree-unchanged.sh compare` passing first.
 - Invoking a gate without a fresh snapshot, or judging a gate's envelope before
   `check-tree-unchanged.sh compare` has passed.
 - Failing a gate because it reported `isolation: absent` — only a change outside its two files
@@ -986,4 +1043,4 @@ gate, none for every other stage). The adapter reads its answer itself from the 
 - Inferring mode from anything other than the exact trailing `autonomous` token in `$ARGUMENTS` —
   a work item summary that sounds like it wants no interruptions is not a flag (core contract §8).
 
-<!-- instructions-stamp: 02876ca43375 -->
+<!-- instructions-stamp: 16defb9fe21e -->

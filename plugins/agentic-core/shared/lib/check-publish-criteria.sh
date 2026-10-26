@@ -25,7 +25,11 @@
 # rules").
 #
 # Usage:
-#   check-publish-criteria.sh <project-root>
+#   check-publish-criteria.sh <project-root> [--exclude-file <working-paths file>]
+#
+# With --exclude-file, the run's declared working paths are not part of the
+# change (filter-working-paths.sh), so the gate reviews exactly what the
+# commit will carry; an absent file excludes nothing.
 #
 # Exit codes:
 #   0 — both structural criteria hold; "valid: publish (<n> files
@@ -43,12 +47,30 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 ROOT="${1:-}"
 
 if [[ -z "$ROOT" ]]; then
-  echo "usage: check-publish-criteria.sh <project-root>" >&2
+  echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2
   exit 2
 fi
+shift
+EXCLUDE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --exclude-file)
+      [[ $# -ge 2 && -n "$2" ]] || { echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2; exit 2; }
+      EXCLUDE="$2"; shift 2 ;;
+    *) echo "usage: check-publish-criteria.sh <project-root> [--exclude-file <file>]" >&2; exit 2 ;;
+  esac
+done
+
+# Drops the run's declared working paths from stdin; passes everything when
+# no file was given.
+working_filter() {
+  if [[ -n "$EXCLUDE" ]]; then bash "$SCRIPT_DIR/filter-working-paths.sh" "$EXCLUDE"; else cat; fi
+}
 
 if [[ ! -d "$ROOT" ]]; then
   echo "invalid: project root not found: $ROOT" >&2
@@ -90,6 +112,19 @@ MERGE_BASE="$(git_root merge-base "$BASE_REF" HEAD 2>/dev/null)" || {
   exit 2
 }
 
+# A working path already committed on this branch cannot be left out: the
+# commit leaves out only what is not yet committed, and the push carries
+# every commit. Refused here rather than dropped from the review.
+if [[ -n "$EXCLUDE" ]]; then
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    if [[ -z "$(printf '%s\n' "$f" | working_filter)" ]]; then
+      echo "invalid: '$f' is a declared working path already committed on this branch — the push would carry it" >&2
+      exit 1
+    fi
+  done < <(git_root diff --name-only "$MERGE_BASE" HEAD -- 2>/dev/null)
+fi
+
 # --name-only against the merge base, not against HEAD alone, so this
 # reflects everything the branch introduces — committed and uncommitted —
 # not only what has been committed so far. Unioned with `ls-files
@@ -101,13 +136,13 @@ CHANGED_FILES=()
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
   CHANGED_FILES+=("$line")
-done < <(git_root diff --name-only "$MERGE_BASE" -- 2>/dev/null)
+done < <(git_root diff --name-only "$MERGE_BASE" -- 2>/dev/null | working_filter)
 
 UNTRACKED_FILES=()
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
   UNTRACKED_FILES+=("$line")
-done < <(git_root ls-files --others --exclude-standard 2>/dev/null)
+done < <(git_root ls-files --others --exclude-standard 2>/dev/null | working_filter)
 
 ALL_FILES=("${CHANGED_FILES[@]+"${CHANGED_FILES[@]}"}" "${UNTRACKED_FILES[@]+"${UNTRACKED_FILES[@]}"}")
 
