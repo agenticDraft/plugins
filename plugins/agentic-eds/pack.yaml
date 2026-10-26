@@ -114,6 +114,7 @@ branch_name:
 requires:
   - tool: aem-cli
     probe: [bash, <pack>/shared/scripts/check-local-cli.sh]
+    install: [npm, install, --save-dev, @adobe/aem-cli]
     remedy: "add the CLI to the project's own dev dependencies before the run (npm install --save-dev @adobe/aem-cli), then commit package.json and the lock file"
 hosts: ["*.aem.page"]
 ignore_paths: ["drafts/"]

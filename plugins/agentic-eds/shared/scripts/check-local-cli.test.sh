@@ -38,6 +38,14 @@ mkdir -p "$WORK/global/bin"
 printf '#!/usr/bin/env bash\n' > "$WORK/global/bin/aem"; chmod +x "$WORK/global/bin/aem"
 (cd "$WORK/absent" && PATH="$WORK/global/bin:$PATH" bash "$SCRIPT"); expect "a global install alone does not count -> exit 1" 1 $?
 
+# The CLI's install is declared once, in the manifest, for the core setup
+# step to offer; this pack's own setup skill no longer checks it or shows it.
+PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+awk '/^  - tool: aem-cli$/ { f = 1; next } f && /^  - tool: / { exit } f && /^    install: \[/ { found = 1 } END { exit !found }' \
+  "$PACK_ROOT/pack.yaml"; expect "the manifest declares an install argv for aem-cli" 0 $?
+! grep -q 'check-requires' "$PACK_ROOT/skills/eds-setup/SKILL.md"; expect "eds-setup no longer runs the requires check" 0 $?
+bash "$PACK_ROOT/core/lib/validate-pack-manifest.sh" "$PACK_ROOT/pack.yaml" >/dev/null 2>&1; expect "the manifest still validates" 0 $?
+
 echo
 echo "=== $PASS passed, $FAIL failed ==="
 (( FAIL == 0 ))
