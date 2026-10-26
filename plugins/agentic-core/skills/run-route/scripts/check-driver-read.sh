@@ -20,7 +20,7 @@
 # made while no run is live is logged as NORUN, never as ALLOW.
 #
 # Adapts the allowlist-then-denylist shape of an upstream check, inverted here
-# to default-deny. Attribution is in this plugin's NOTICE.
+# to default-deny.
 
 set -uo pipefail
 

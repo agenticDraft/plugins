@@ -164,11 +164,8 @@ Where a decision can be made from data on disk, a script makes it, and the model
 script printed. A frame chosen by name would be a guess dressed as a fetch; a question is the
 honest answer when the reference is ambiguous.
 
-This pack adapts patterns from earlier work under the terms recorded in [NOTICE](NOTICE).
-
 ---
 
 agenticDraft
 
-License: not declared in `.claude-plugin/plugin.json`. Attribution and terms for adapted
-material: [NOTICE](NOTICE).
+License: not declared in `.claude-plugin/plugin.json`.

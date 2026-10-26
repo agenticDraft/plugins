@@ -52,7 +52,7 @@
       "displayName": "Agentic Core",
       "source": "./plugins/agentic-core",
       "description": "Agnostic delivery core: sequences stages, spawns pack adapters as subagents, reads the result envelope and branches. Names no tracker, SCM, design tool or browser.",
-      "version": "0.2.16",
+      "version": "0.2.17",
       "category": "development",
       "tags": [
         "delivery",
@@ -72,7 +72,7 @@
       "displayName": "Agentic Edge Delivery",
       "source": "./plugins/agentic-eds",
       "description": "Platform pack for an Edge Delivery project: binds every stage of the default delivery route to the platform's own conventions.",
-      "version": "0.2.13",
+      "version": "0.2.14",
       "category": "development",
       "tags": [
         "edge-delivery",
@@ -132,7 +132,7 @@
       "displayName": "Agentic Figma",
       "source": "./plugins/agentic-figma",
       "description": "Design provider pack: fetch_reference against a Figma file through the Figma MCP server's design-context tools.",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "category": "development",
       "tags": [
         "figma",
