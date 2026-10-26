@@ -192,6 +192,34 @@ else
   PASS=$((PASS + 1)); echo "  ok: the remedy was printed, not executed"
 fi
 
+echo "[read-only] a declared install is skipped, never run (D144)"
+# The install here would create a file if anything ever ran it. Only the
+# core setup step's own script may, and this is not that script.
+INSTALL_CANARY="$TMPDIR_TEST/install-canary-should-not-exist"
+WITH_INSTALL="$TMPDIR_TEST/with-install.yaml"
+cat > "$WITH_INSTALL" <<EOF
+kind: platform
+requires:
+  - tool: absent-tool
+    probe: [no-such-command-anywhere]
+    install: [touch, $INSTALL_CANARY]
+    remedy: "install absent-tool, then commit what it changed"
+  - tool: present-tool
+    probe: [present-tool, --version]
+    remedy: "install present-tool"
+EOF
+OUT=$("$CHECKER" "$WITH_INSTALL" 2>&1); RC=$?
+assert_exit "an entry with install is still only probed -> exit 1" 1 "$RC" "$OUT"
+assert_contains "names the missing tool with its remedy" "missing: absent-tool — install absent-tool, then commit what it changed" "$OUT"
+assert_contains "reads on past the install line to the next entry" "ok: present-tool" "$OUT"
+OUT=$("$CHECKER" platform="$WITH_INSTALL" 2>/dev/null); RC=$?
+assert_exit "the driver's labelled form -> exit 1" 1 "$RC" "$OUT"
+if [[ -e "$INSTALL_CANARY" ]]; then
+  FAIL=$((FAIL + 1)); echo "  FAIL: the install was executed — only the setup step's install script may run it"
+else
+  PASS=$((PASS + 1)); echo "  ok: the install was skipped, not executed"
+fi
+
 echo "[read-only] the manifest is not modified"
 BEFORE="$(cat "$MIXED")"
 "$CHECKER" "$MIXED" >/dev/null 2>&1

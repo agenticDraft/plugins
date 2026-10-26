@@ -523,6 +523,84 @@ OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
 assert_exit "rejected (exit 1)" 1 $ST "$OUT"
 assert_contains "reason says omit the key" "omit the key instead" "$OUT"
 
+echo "[accept] validator 18 — an install argv between probe and remedy (D144)"
+cat > "$PROV_TMP/pack.yaml" <<'EOF'
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+requires:
+  - tool: example-tool
+    probe: [bash, <pack>/scripts/probe-tool.sh]
+    install: [bash, <pack>/scripts/probe-tool.sh, --install]
+    remedy: "install example-tool, then commit what it changed"
+EOF
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "accepted (exit 0)" 0 $ST "$OUT"
+
+echo "[reject] validator 18 — install given as a string rather than argv (D144)"
+cat > "$PROV_TMP/pack.yaml" <<'EOF'
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+requires:
+  - tool: example-tool
+    probe: [example-tool, --version]
+    install: "example-installer add example-tool"
+    remedy: "install example-tool"
+EOF
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the tool and the expected shape" "requires.example-tool: expected 'install: [<argv>" "$OUT"
+
+echo "[reject] validator 18 — an empty install list (D144)"
+cat > "$PROV_TMP/pack.yaml" <<'EOF'
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+requires:
+  - tool: example-tool
+    probe: [example-tool, --version]
+    install: []
+    remedy: "install example-tool"
+EOF
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason says an install that runs nothing is no install" "'install' is an empty list" "$OUT"
+
+echo "[reject] validator 18 — a <pack>/ install naming a file the pack does not ship (D144)"
+cat > "$PROV_TMP/pack.yaml" <<'EOF'
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+requires:
+  - tool: example-tool
+    probe: [example-tool, --version]
+    install: [bash, <pack>/scripts/no-such-installer.sh]
+    remedy: "install example-tool"
+EOF
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+assert_contains "reason names the install and the missing file" "'install' names a file this pack does not ship" "$OUT"
+
+echo "[reject] validator 18 — install after remedy is out of order (D144)"
+cat > "$PROV_TMP/pack.yaml" <<'EOF'
+kind: provider
+role: design
+operations: {}
+unsupported: [fetch_reference]
+requires:
+  - tool: example-tool
+    probe: [example-tool, --version]
+    remedy: "install example-tool"
+    install: [example-installer, add, example-tool]
+EOF
+OUT=$(bash "$VALIDATOR" "$PROV_TMP/pack.yaml" 2>&1); ST=$?
+assert_exit "rejected (exit 1)" 1 $ST "$OUT"
+
 echo "[accept] validator 18 — requires on a platform pack (D137)"
 PLAT_TMP="$(mktemp -d "${TMPDIR:-/tmp}/validate-pack-manifest-platform.XXXXXX")"
 cp -R "$FIXDIR/platform-valid/." "$PLAT_TMP/"
