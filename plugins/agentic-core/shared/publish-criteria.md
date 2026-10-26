@@ -61,6 +61,10 @@ not to trust.
   applies the project's own ignore rules, so an untracked path reaches the change set only when
   `.gitignore` does not already exclude it.
 
+  With `--exclude-file <working-paths file>`, the run's declared working paths (`pack-manifest.md`,
+  "Who reads them in a run") leave both lists before either criterion is judged, so the gate counts
+  and reviews exactly what `deliver`'s commit (`lib/commit-change.sh`, same file) will carry.
+
   *Added 2026-09-22, after a route passed a stage that had implemented the bullet above and not
   this one.* The rule had existed in exactly one place — a comment inside one consumer's
   implementation — and a rule recorded only inside one consumer cannot reach the other. This is

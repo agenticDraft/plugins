@@ -249,15 +249,27 @@ pack commits them before `deliver` runs `scm.publish_change`"), and nothing betw
 here does either. `publish_change` pushes `HEAD`, not the working tree, so whatever is still
 uncommitted at this point would be silently left out of the branch it pushes.
 
-Run `git add -A`, then `git commit -m "<the composed title>"`.
+Commit with the core's script, never with `git add` and `git commit` of your own:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/core/lib/commit-change.sh <project root> "<the composed title>" \
+  --exclude-file .ai/run-context/working-paths.txt
+```
+
+`<project root>` is this stage's own working directory, absolute. The file lists the run's working
+paths — this pack's `drafts/` fixture among them, every other configured pack's working files and the
+core's run files — written by the route driver before intake. The script stages everything else
+and leaves those out, whether untracked, already tracked or already staged, so a fixture never
+reaches the pull request even in a project whose ignore file does not name it. They stay on disk.
+An absent file leaves nothing out (a standalone run of this stage).
 
 ### Commit succeeded?
 
-Exit `0` — continue to **Publish the change**. Exit `1` with "nothing to commit, working tree
-clean" on its own output — also continue to **Publish the change**: an earlier retry of this stage
-already committed the same change, or the plan required no file change the working tree did not
-already have — treated the same as a successful commit, not a failure. Any other non-zero exit — go
-to **Report fail**, naming `git`'s own stderr.
+Exit `0` — continue to **Publish the change**, keeping its `left-out:` lines for the delivery
+report. `nothing: …` is a success too: an earlier attempt already committed the same change, or the
+plan required no file change the working tree did not already have. Exit `1` — go to **Report
+fail**, naming the stderr it passed through from `git`. Exit `2` — a usage error in this stage's own
+call; fix the call.
 
 ### Publish the change
 
@@ -282,6 +294,10 @@ branch: <the branch from Determine the branch to publish>
 title: <the composed title>
 body: <the composed body>
 ```
+
+Pass the body exactly as composed. When the repository has a pull request template, the `scm`
+operation fills it from this body and carries the body below it unchanged; this stage neither reads
+nor fills a template itself.
 
 No `base` line — `publish_change` resolves the repository's own default branch when one is omitted,
 the same "config describes the project, the operation decides the mechanism" reasoning `eds-verify`
@@ -327,7 +343,8 @@ Capture its entire output and read the captured envelope's `verdict`.
 
 ### Report back to the tracker
 
-1. Write `.ai/run-context/delivery-report.md`: the item id, the branch, the pull request URL and
+1. Write `.ai/run-context/delivery-report.md`: every `left-out:` line `commit-change.sh` printed,
+   verbatim, under a `## Not committed` heading (none — say so in one line), the item id, the branch, the pull request URL and
    state (from `publish_change`'s own artifact JSON), the check summary and metrics line (from
    `check_status`, or "checks could not be read: <its summary verbatim>" when that operation did
    not validate), the `## Requirements` section composed in **Compose the change summary**, and the

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Run: bash plugins/agentic-core/shared/lib/check-tree-clean.sh <project-root>
 #
-# check-tree-clean.sh <project-root> — the fresh-start tree guard.
+# check-tree-clean.sh <project-root> [--exclude-file <working-paths file>]
+# — the fresh-start tree guard. With --exclude-file, the run's declared
+# working paths are not changes, exactly as the publish gate leaves them out.
 #
 # A fresh run must begin on a tree with nothing in it the run did not write.
 # The publish gate reviews, and the deliver stage publishes, everything in
@@ -37,11 +39,18 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST="$SCRIPT_DIR/list-changed-files.sh"
 
+usage() { echo "usage: check-tree-clean.sh <project-root> [--exclude-file <working-paths file>]" >&2; exit 2; }
+
 ROOT="${1:-}"
-if [[ -z "$ROOT" || ! -d "$ROOT" || $# -ne 1 ]]; then
-  echo "usage: check-tree-clean.sh <project-root>" >&2
-  exit 2
-fi
+[[ -n "$ROOT" && -d "$ROOT" ]] || usage
+shift
+LIST_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --exclude-file) [[ $# -ge 2 && -n "$2" ]] || usage; LIST_ARGS=(--exclude-file "$2"); shift 2 ;;
+    *) usage ;;
+  esac
+done
 
 MARKER="$ROOT/.ai/run-context/tree-prechecked"
 if [[ -s "$MARKER" ]]; then
@@ -52,7 +61,7 @@ if [[ -s "$MARKER" ]]; then
   fi
 fi
 
-CHANGED="$(bash "$LIST" "$ROOT")" || exit 2
+CHANGED="$(bash "$LIST" "$ROOT" ${LIST_ARGS[@]+"${LIST_ARGS[@]}"})" || exit 2
 
 if [[ -z "$CHANGED" ]]; then
   echo "clean: no change and no untracked path"
