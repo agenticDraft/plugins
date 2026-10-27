@@ -92,7 +92,7 @@
       "displayName": "Agentic Jira",
       "source": "./plugins/agentic-jira",
       "description": "Tracker provider pack: fetch_item, post_note, attach_file, list_types, update_item and create_item against a Jira Cloud site over its REST API.",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "category": "development",
       "tags": [
         "jira",
@@ -112,7 +112,7 @@
       "displayName": "Agentic GitHub",
       "source": "./plugins/agentic-github",
       "description": "SCM provider pack: create_branch, publish_change and check_status against a GitHub repository over the gh CLI.",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "category": "development",
       "tags": [
         "github",
@@ -152,7 +152,7 @@
       "displayName": "Agentic Playwright",
       "source": "./plugins/agentic-playwright",
       "description": "Browser provider pack: render, capture, measure and interact against a real headless Chromium through the playwright library.",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "category": "development",
       "tags": [
         "playwright",

@@ -62,7 +62,9 @@ A file that cannot run counts as a failure; do not skip a suite to make a run gr
 
 **A plugin whose files changed carries a new `version` in its `plugin.json`, and the catalog entry
 in `marketplace.json` carries the same one.** CI (`check-plugin-versions.yaml`) fails a pull request
-otherwise.
+otherwise. A change behind a symlink a plugin tracks counts as a change to that plugin: every pack's
+`core` links `agentic-core/shared`, and its installed copy keeps the core it was installed with
+until its own version moves, so a change there bumps the core and every pack.
 
 ### Release tag
 

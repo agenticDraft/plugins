@@ -4,7 +4,9 @@
 # Two rules, both read from git and the manifests:
 #   1. A plugin with a file changed since the merge-base with <base-ref> carries a different
 #      `version` in its plugin.json than it had there. A plugin that did not exist there is new
-#      and needs no bump.
+#      and needs no bump. A symlink tracked inside a plugin counts its target as the plugin's
+#      own files: the installed copy holds what the link pointed at when that version was
+#      installed, so a change behind the link reaches it only through a bump.
 #   2. Every catalog entry's `version` equals the `version` in that plugin's plugin.json.
 # Prints one `ok:` / `bump:` / `drift:` line per finding and exits 1 on any `bump:` or `drift:`.
 set -uo pipefail
@@ -15,7 +17,23 @@ cd "${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" || exit 2
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 2; }
 
 MB=$(git merge-base "$BASE" HEAD) || { echo "no merge-base with $BASE" >&2; exit 2; }
+ROOT=$(pwd -P)
 bad=0
+
+# linked_change <plugin dir> — prints "<link> -> <target>" for the first tracked symlink in the
+# plugin whose target, a folder in this repository, changed since the merge-base.
+linked_change() {
+  local link target resolved
+  while IFS= read -r link; do
+    target=$(cd "$(dirname "$link")" 2>/dev/null && cd "$(readlink "$(basename "$link")")" 2>/dev/null && pwd -P) || continue
+    case "$target" in "$ROOT"/*) resolved="${target#"$ROOT"/}" ;; *) continue ;; esac
+    if [ -n "$(git diff --name-only "$MB" HEAD -- "$resolved")" ]; then
+      echo "$link -> $resolved"
+      return 0
+    fi
+  done < <(git ls-files -s -- "$1" | awk '$1 == "120000" { sub(/^[^\t]*\t/, ""); print }')
+  return 1
+}
 
 for dir in plugins/*/; do
   dir="${dir%/}"
@@ -27,10 +45,13 @@ for dir in plugins/*/; do
     continue
   fi
   before=$(jq -r '.version' <<<"$before_json")
+  via=""
   if [ -z "$(git diff --name-only "$MB" HEAD -- "$dir")" ]; then
-    echo "ok: $dir unchanged"
-  elif [ "$now" = "$before" ]; then
-    echo "bump: $dir changed since $BASE but its version is still $now"
+    via=$(linked_change "$dir") || { echo "ok: $dir unchanged"; continue; }
+    via=" (through its link $via)"
+  fi
+  if [ "$now" = "$before" ]; then
+    echo "bump: $dir changed since $BASE$via but its version is still $now"
     bad=1
   else
     echo "ok: $dir changed, version $before -> $now"

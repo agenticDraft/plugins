@@ -46,5 +46,24 @@ run; expect "a bump with a matching catalog passes" 0 "ok: plugins/alpha changed
 write_plugin gamma 0.1.0; write_catalog alpha 1.1.0 beta 1.0.0 gamma 0.1.0; g add -A; g commit -qm "gamma"
 run; expect "a new plugin needs no bump" 0 "ok: plugins/gamma is new since main" "$rc" "$out"
 
+# A plugin that links another plugin's folder ships a copy of it once installed, so a change
+# behind the link is a change to the linking plugin too.
+g switch -q main
+mkdir -p "$WORK/plugins/beta/shared"; echo s > "$WORK/plugins/beta/shared/s.txt"
+ln -s ../beta/shared "$WORK/plugins/alpha/core"
+g add -A; g commit -q -m "alpha links beta's shared folder"
+g switch -q -c linked
+
+echo t >> "$WORK/plugins/beta/shared/s.txt"
+write_plugin beta 1.1.0; write_catalog alpha 1.0.0 beta 1.1.0; g add -A; g commit -qm "change behind the link, beta bumped"
+run; expect "a change behind a link without a bump of the linking plugin fails" 1 "bump: plugins/alpha changed since main (through its link plugins/alpha/core -> plugins/beta/shared) but its version is still 1.0.0" "$rc" "$out"
+
+write_plugin alpha 1.0.1; write_catalog alpha 1.0.1 beta 1.1.0; g commit -qam "bump alpha"
+run; expect "a bump of the linking plugin passes" 0 "ok: plugins/alpha changed, version 1.0.0 -> 1.0.1" "$rc" "$out"
+
+g switch -q main; g switch -q -c unlinked-change
+echo u > "$WORK/plugins/beta/other.txt"; write_plugin beta 1.0.1; write_catalog alpha 1.0.0 beta 1.0.1; g add -A; g commit -qm "beta outside the linked folder"
+run; expect "a change outside the linked folder leaves the linking plugin unchanged" 0 "ok: plugins/alpha unchanged" "$rc" "$out"
+
 echo "=== $pass passed, $failed failed ==="
 [ "$failed" -eq 0 ]
