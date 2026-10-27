@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How the Delivery Core Works</title>
+<meta name="description" content="The agentic delivery core: three layers, one run step by step, its vocabulary, gates and terminal states, and agentic-eds as one swappable platform pack.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Delivery Factory reference page, same dark world as the part pages: navy ground, spectrum accents,
+   square edges. Two parts: the platform-independent core, then one platform pack as the worked example.
+   Wide figures scroll inside their own frame; the page itself never scrolls sideways. */
+:root {
+  color-scheme: dark;
+  --ink: #f7f8fb;
+  --muted: #9ba7bd;
+  --dim: #8391a8;
+  --navy: #071020;
+  --navy-2: #0a1427;
+  --navy-3: #081225;
+  --footer: #050c18;
+  --line: rgba(156, 182, 226, .16);
+  --line-strong: rgba(156, 182, 226, .26);
+  --cyan: #55e8ff;
+  --violet: #b98cff;
+  --amber: #ffcf6e;
+  --red: #ff9a8f;
+  --spectrum: linear-gradient(110deg, var(--cyan), #75a0ff 58%, #c588ff);
+  --sans: "Manrope", Arial, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, monospace;
+  --space-page: clamp(1rem, 5vw, 4.5rem);
+  --space-section: clamp(3.5rem, 7vw, 6rem);
+  --measure: 66ch;
+  --code-fg: #cdd6e4;
+  --code-bg: rgba(156, 182, 226, .1);
+  --code-line: rgba(156, 182, 226, .18);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--navy); color: var(--ink); font: 400 17px/1.65 var(--sans); overflow-x: hidden; }
+main, section, div, nav, ul, ol, li, p, h1, h2, h3, figure, table { min-width: 0; }
+p, h1, h2, h3, a, span, li, td { overflow-wrap: break-word; }
+a { color: inherit; }
+a.pl { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+::selection { background: var(--cyan); color: var(--navy); }
+:focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
+h1, h2, h3, p { margin-top: 0; }
+h1, h2, h3 { text-wrap: balance; }
+section[id] { scroll-margin-top: 90px; }
+code { font: .86em/1.4 var(--mono); color: var(--code-fg); background: var(--code-bg);
+  border: 1px solid var(--code-line); padding: .05em .35em; overflow-wrap: anywhere; }
+strong { font-weight: 700; color: var(--ink); }
+
+.site-header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center;
+  justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; padding: 1.1rem var(--space-page);
+  background: rgba(7, 16, 32, .9); backdrop-filter: blur(18px); border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: .7rem; font-weight: 700; font-size: 1.15rem;
+  letter-spacing: -.035em; text-decoration: none; }
+.brand-mark { width: 14px; height: 14px; background: var(--spectrum); transform: rotate(45deg); }
+.site-nav { display: flex; gap: 1.6rem; font-size: .98rem; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.site-nav a { color: var(--muted); text-decoration: none; white-space: nowrap; transition: color .2s; }
+.site-nav a:hover { color: var(--ink); }
+
+.hero { position: relative; padding: clamp(3.5rem, 8vw, 6.5rem) var(--space-page) 0; isolation: isolate;
+  border-bottom: 1px solid rgba(156, 182, 226, .28); overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -2;
+  background: linear-gradient(180deg, rgba(85, 140, 255, .045), transparent 42%); }
+.hero-glow { position: absolute; z-index: -1; width: 50vw; max-width: 100%; aspect-ratio: 1; left: -20vw; top: 2rem;
+  border-radius: 50%; background: radial-gradient(circle, rgba(55, 135, 255, .16), transparent 65%); filter: blur(16px); }
+.eyebrow { display: flex; align-items: center; gap: .8rem; margin: 0 0 1.2rem; font: 500 .8rem/1.45 var(--mono);
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.eyebrow::before { content: ""; flex: none; width: 36px; height: 2px; background: var(--spectrum); }
+h1 { margin-bottom: 1.4rem; font-size: clamp(2.4rem, 6.5vw, 5rem); line-height: 1.02; letter-spacing: -.045em; font-weight: 600; }
+h1 em, h2 em { font-style: normal; color: var(--cyan); }
+.lede { max-width: var(--measure); color: var(--muted); font-size: clamp(1.1rem, 1.6vw, 1.35rem); line-height: 1.6;
+  letter-spacing: -.012em; margin-bottom: clamp(1.4rem, 3vw, 2rem); }
+.proof { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: .6rem 2rem; align-items: baseline;
+  margin-inline: calc(var(--space-page) * -1); margin-top: clamp(2rem, 4vw, 3rem); padding: 1.35rem var(--space-page);
+  border-top: 1px solid rgba(156, 182, 226, .25); background: var(--navy-2); }
+.proof-label { margin: 0; color: var(--muted); font: .78rem/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.proof p:last-child { margin: 0; max-width: 80ch; color: var(--muted); font-size: .98rem; line-height: 1.6; }
+
+.part-band { padding: clamp(2.5rem, 5vw, 4rem) var(--space-page); background: linear-gradient(90deg, rgba(85, 232, 255, .08), rgba(185, 140, 255, .06));
+  border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); }
+.part-band .eyebrow { color: var(--cyan); }
+.part-band h2 { margin: 0 0 .6rem; }
+.part-band p { margin: 0; max-width: var(--measure); color: var(--muted); font-size: 1.1rem; }
+
+.section { padding: var(--space-section) var(--space-page); border-top: 1px solid var(--line); }
+.section.alt { background: var(--navy-3); }
+.section-head { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); column-gap: clamp(2rem, 6vw, 6rem);
+  margin-bottom: clamp(2rem, 4vw, 3rem); }
+.section-head .eyebrow { grid-column: 1 / -1; }
+h2 { margin-bottom: 0; font-size: clamp(1.9rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -.04em; font-weight: 600; }
+h3 { margin: 0 0 .35rem; font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.3; }
+.section-head > p:last-child { align-self: end; max-width: 46ch; margin: 0; color: var(--muted); font-size: 1.08rem; line-height: 1.65; }
+.prose { max-width: var(--measure); }
+.prose p, .prose li { color: var(--muted); }
+.prose ol, .prose ul { padding-left: 1.2rem; }
+.sub { margin-top: clamp(2.2rem, 4vw, 3rem); }
+.sub > h3 { font-size: 1.3rem; margin-bottom: .8rem; }
+.claim { margin: clamp(1.8rem, 3vw, 2.4rem) 0 0; padding: 1.1rem 1.3rem; border-left: 3px solid var(--cyan);
+  background: rgba(85, 232, 255, .06); font-size: clamp(1.05rem, 1.8vw, 1.3rem); font-weight: 600; letter-spacing: -.02em; line-height: 1.4; max-width: 60ch; }
+.note { margin: 1.6rem 0 0; padding: 1rem 1.2rem; border: 1px solid rgba(255, 207, 110, .35); background: rgba(255, 207, 110, .05);
+  max-width: 72ch; color: var(--muted); }
+.note strong { color: var(--amber); }
+.note p:last-child { margin-bottom: 0; }
+
+/* paired rows: what the core does / what the guidance says */
+.pairs { border-top: 1px solid var(--line); }
+.pairs-head, .pair { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1rem clamp(1.5rem, 4vw, 3rem); }
+.pairs-head { padding: .8rem .5rem; color: var(--dim); font: .74rem/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.pair { padding: 1.15rem .5rem; border-bottom: 1px solid rgba(156, 182, 226, .2); font-size: .98rem; }
+.pair > div:first-child { color: var(--ink); }
+.pair > div:last-child { color: var(--muted); }
+.pair .src { display: block; margin-top: .45rem; font: .78rem/1.5 var(--mono); }
+.pair .src a { color: var(--cyan); }
+
+/* three layers */
+.layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.layer { background: var(--navy); padding: 1.4rem 1.3rem; }
+.layer .n { display: block; margin-bottom: .5rem; font: .74rem/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.layer.det .n { color: var(--cyan); }
+.layer.mod .n { color: var(--violet); }
+.layer p { color: var(--muted); font-size: .97rem; margin-bottom: .7rem; }
+.layer p:last-child { margin-bottom: 0; }
+.layer .items { font: .78rem/1.75 var(--mono); color: var(--dim); }
+.boundary { margin: 1.6rem 0 0; padding: 1.1rem 1.3rem; background: var(--navy-2); border-left: 3px solid var(--violet); max-width: 72ch; }
+.boundary blockquote { margin: .6rem 0 0; font: .9rem/1.6 var(--mono); color: var(--code-fg); }
+.boundary p { margin: 0; color: var(--muted); }
+
+/* figures */
+.shot { margin: 0; }
+.shot-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 2rem; margin-bottom: .8rem;
+  color: var(--dim); font: .74rem/1.5 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.shot-frame { overflow-x: auto; border: 1px solid rgba(156, 182, 226, .22); background: var(--navy); }
+.shot svg { display: block; width: 100%; height: auto; }
+.shot.run svg { min-width: 900px; }
+.shot.route svg { min-width: 820px; }
+.shot figcaption { margin-top: .9rem; max-width: 76ch; color: var(--muted); font-size: .95rem; }
+.scroll-hint { display: none; color: var(--dim); font: .74rem/1.5 var(--mono); margin: .5rem 0 0; }
+@media (max-width: 900px) { .scroll-hint { display: block; } }
+.key { display: flex; flex-wrap: wrap; gap: .6rem 1.6rem; margin-top: 1rem; color: var(--muted); font-size: .92rem; }
+.key span { display: inline-flex; align-items: center; gap: .5rem; }
+.sw { width: 22px; height: 12px; border: 1.5px solid; flex: none; }
+.sw.det { border-color: var(--cyan); background: rgba(85, 232, 255, .1); }
+.sw.mod { border-color: var(--violet); background: rgba(185, 140, 255, .12); }
+.sw.ref { border-color: var(--dim); border-style: dashed; }
+.sw.br { border-color: var(--amber); border-style: dashed; background: rgba(255, 207, 110, .08); }
+
+/* vocabulary */
+.chips { display: flex; flex-wrap: wrap; gap: .45rem; margin: .4rem 0 0; padding: 0; list-style: none; }
+.chips li { font: .82rem/1.5 var(--mono); color: var(--code-fg); padding: .2rem .55rem; border: 1px solid var(--line-strong); background: var(--navy-2); }
+.chips li.gate { border-color: var(--cyan); color: var(--cyan); }
+.defs { margin: 0; border-top: 1px solid var(--line); }
+.defs > div { display: grid; grid-template-columns: minmax(130px, .3fr) minmax(0, 1fr); gap: .3rem clamp(1rem, 3vw, 2.5rem);
+  padding: .95rem .5rem; border-bottom: 1px solid rgba(156, 182, 226, .2); }
+.defs dt { font: .9rem/1.6 var(--mono); color: var(--cyan); }
+.defs dd { margin: 0; color: var(--muted); font-size: .98rem; }
+.defs dd .ops { display: block; margin-top: .2rem; font: .82rem/1.7 var(--mono); color: var(--code-fg); }
+.defs.verdicts dt.warn { color: var(--amber); }
+.defs.verdicts dt.fail { color: var(--red); }
+.defs.verdicts dt.q { color: var(--violet); }
+pre.envelope { margin: 0; padding: 1.2rem 1.3rem; background: var(--navy-2); border: 1px solid rgba(85, 232, 255, .3);
+  color: var(--code-fg); font: .9rem/1.7 var(--mono); overflow-x: auto; }
+pre.envelope .k { color: var(--cyan); }
+pre.envelope .c { color: var(--dim); }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: start; }
+
+/* terminal states */
+.ends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 1.4rem; }
+.ends > div { background: var(--navy); padding: 1.3rem 1.2rem; }
+.ends .tag { display: block; margin-bottom: .5rem; font: 500 .95rem/1.5 var(--mono); }
+.ends .ok .tag { color: var(--cyan); }
+.ends .bl .tag { color: var(--amber); }
+.ends .fa .tag { color: var(--red); }
+.ends p { margin: 0 0 .5rem; color: var(--muted); font-size: .95rem; }
+.ends p:last-child { margin: 0; }
+
+/* rejected alternatives */
+.chapters { margin: 0; padding: 0; list-style: none; }
+.chapter { display: grid; grid-template-columns: minmax(150px, .28fr) minmax(0, 1fr); gap: clamp(1rem, 4vw, 3rem);
+  padding: 1.3rem 0; border-top: 1px solid var(--line); }
+.chapter-marker { margin: .2rem 0 0; color: var(--red); font: .8rem/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.chapter p { margin: 0 0 .6rem; max-width: var(--measure); color: var(--muted); font-size: 1.02rem; line-height: 1.7; }
+.chapter p:last-child { margin: 0; }
+
+/* EDS pack details */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.cards > div { background: var(--navy); padding: 1.4rem 1.3rem; }
+.cards .tag { display: block; margin-bottom: .6rem; color: var(--cyan); font: .74rem/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.cards p { margin: 0 0 .6rem; color: var(--muted); font-size: .96rem; }
+.cards p:last-child { margin: 0; }
+.budgets { margin: .2rem 0 0; padding: 0; list-style: none; font: .86rem/1.9 var(--mono); color: var(--code-fg); }
+.budgets b { color: var(--cyan); font-weight: 500; }
+
+.site-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 2rem;
+  padding: 2.2rem var(--space-page); color: var(--muted); background: var(--footer); border-top: 1px solid var(--line-strong);
+  font-size: .95rem; }
+.site-footer p { margin: 0; max-width: 80ch; }
+
+@media (max-width: 960px) {
+  .layers, .cards, .ends { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 860px) {
+  .section-head, .two { grid-template-columns: minmax(0, 1fr); }
+  .section-head > p:last-child { margin-top: 1.2rem; }
+  .proof { grid-template-columns: minmax(0, 1fr); }
+  .chapter { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+  .pairs-head { display: none; }
+  .pair { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .pair > div:last-child { padding-left: .8rem; border-left: 2px solid var(--line-strong); }
+}
+@media (max-width: 640px) {
+  .site-header { flex-direction: column; align-items: flex-start; gap: .7rem; }
+  .site-nav { width: 100%; gap: 1.2rem; font-size: .92rem; }
+  .defs > div { grid-template-columns: minmax(0, 1fr); }
+  .pair, .defs > div { padding-inline: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .site-nav a { transition-duration: 0s; }
+}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span>Delivery Factory · How it works</a>
+  <nav class="site-nav" aria-label="Sections">
+    <a href="#problem">The problem</a>
+    <a href="#guidance">Guidance</a>
+    <a href="#layers">Three layers</a>
+    <a href="#run">One run</a>
+    <a href="#vocabulary">Vocabulary</a>
+    <a href="#ends">Gates and ends</a>
+    <a href="#rejected">Rejected</a>
+    <a href="#eds">The EDS pack</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <p class="eyebrow">Delivery Factory · Reference</p>
+    <h1>How the delivery core <em>works</em>.</h1>
+    <p class="lede">A work item goes in, a pull request comes out. This page explains the machinery in between: what is plain code, where a model is needed, what one run does step by step, and how a platform plugs in without the core knowing its name. Repo: <a class="pl" href="https://github.com/agenticDraft/plugins">github.com/agenticDraft/plugins</a></p>
+    <div class="proof">
+      <p class="proof-label">Built as plugins</p>
+      <p>Six Claude Code plugins. <a class="pl" href="https://github.com/agenticDraft/plugins/tree/main/plugins/agentic-core"><code>agentic-core</code></a> drives the route and names no product. One <em>platform pack</em>, <a class="pl" href="https://github.com/agenticDraft/plugins/tree/main/plugins/agentic-eds"><code>agentic-eds</code></a>, says what each stage means for an Edge Delivery project. Four <em>provider packs</em> each fill one role: <code>agentic-jira</code> (tracker), <code>agentic-github</code> (scm), <code>agentic-figma</code> (design), <code>agentic-playwright</code> (browser).</p>
+    </div>
+  </section>
+
+  <div class="part-band">
+    <p class="eyebrow">Part one</p>
+    <h2>The core</h2>
+    <p>Everything in this part holds for any platform. The core defines the stages, the roles and the shapes; it never names a tracker, a design tool or a framework.</p>
+  </div>
+
+  <section class="section" id="problem">
+    <div class="section-head">
+      <p class="eyebrow">What it is</p>
+      <h2>One command per <em>ticket</em></h2>
+      <p>The starting point was a checklist done by hand, and the quality bar lived in a document, not in the loop.</p>
+    </div>
+    <div class="prose">
+      <p>A developer read the ticket, wrote the block, started the local preview, compared the page against a design screenshot by eye, opened a pull request and pasted a screenshot back into the ticket. Done by hand, that is a checklist. Done by one long prompt, it drifts: the agent re-does work, carries every file it ever read, and nobody can say which step decided what.</p>
+      <p>The core replaces it with one command, <code>/agentic-core:run-route &lt;item&gt;</code>. It reads the item, plans, builds, renders, compares against the design, lints, and stops for a human at the decisions that matter. The run is a fixed route of fifteen stages. Each stage runs as its own isolated agent and reports back in five lines.</p>
+    </div>
+    <p class="claim">The core sequences, spawns, reads one verdict and branches. Everything that names a platform or a product lives in a pack.</p>
+  </section>
+
+  <section class="section alt" id="guidance">
+    <div class="section-head">
+      <p class="eyebrow">Design against published guidance</p>
+      <h2>How it lines up with <em>Anthropic's</em> advice</h2>
+      <p>A predictable route in code, deterministic checks before any model, isolated stages, and a person at the decisions that matter. Each row pairs a design decision with the guidance it matches.</p>
+    </div>
+    <div class="pairs">
+      <div class="pairs-head"><span>What the core does</span><span>What the guidance says</span></div>
+      <div class="pair"><div><strong>A fixed route of fifteen stages.</strong> Each stage's <code>when:</code> condition is evaluated once, after <code>intake</code>; the model never decides which stage comes next.</div><div>Use a workflow, a predefined code path, when the task is predictable. Start with the simplest pattern that works and add autonomy only where it pays for itself.<span class="src"><a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a></span></div></div>
+      <div class="pair"><div><strong>Deterministic checks before any model review.</strong> Contract validators run first and cost nothing; a reviewing model sees only what survives. Classification logic lives in scripts the skills call.</div><div>Grade with code first and with a model only where code cannot decide. Put logic into tools rather than into prompt text.<span class="src"><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals</a> · <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing tools for agents</a></span></div></div>
+      <div class="pair"><div><strong>One isolated subagent per stage.</strong> Every stage adapter runs with <code>context: fork</code>; the driver's context grows by one envelope per stage, never by what a stage read.</div><div>A subagent works in its own context window and hands back a condensed result. Context is a finite resource to be spent deliberately.<span class="src"><a href="https://www.anthropic.com/engineering/multi-agent-research-system">Multi-agent research system</a> · <a href="https://platform.claude.com/cookbook/tool-use-context-engineering-context-engineering-tools">Context engineering</a></span></div></div>
+      <div class="pair"><div><strong>Fix loops with budgets.</strong> A stage may edit only as many times as its <code>fix_attempts</code> allows, asks <code>check-fix-budget.sh</code> before every edit, and stops early when an edit brings no improvement.</div><div>The evaluator-optimizer loop: one step produces, another evaluates, with an explicit stopping condition so the loop cannot run on.<span class="src"><a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a></span></div></div>
+      <div class="pair"><div><strong>The human decides.</strong> Three gates, a <code>question</code> verdict asked only at a stage boundary, and a driver that never retries a stage on its own.</div><div>Give the agent checkpoints where it pauses for human feedback, and keep a person in the loop for decisions that are costly to get wrong.<span class="src"><a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a></span></div></div>
+      <div class="pair"><div><strong>Guardrails enforced by the host, not the prompt.</strong> Headless runs use <code>dontAsk</code>, a tool allowlist, a <code>PreToolUse</code> hook that also covers subagents, a locked network allowlist, a write-protected plugin directory, and caps on turns, time and budget. Gates are checked by a tree snapshot before and after.</div><div>Layer the defenses and make the application enforce its limits, so that a manipulated model still cannot act outside them.<span class="src"><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks">Mitigate jailbreaks and prompt injections</a></span></div></div>
+      <div class="pair"><div><strong>Work items are untrusted input.</strong> <code>intake</code> sanitizes the item before anything acts on it, the <code>external-content-safety</code> contract covers what stages read, and an open poisoning finding blocks the run before a branch exists.</div><div>Indirect prompt injection arrives through content the agent reads, such as tickets, documents and tool results. Treat that content as data, never as instructions.<span class="src"><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks">Mitigate jailbreaks and prompt injections</a></span></div></div>
+      <div class="pair"><div><strong>Parallel fan-out only where the parts are independent.</strong> The EDS pack's <code>conventions</code> stage runs three subagents (styles, markup, component reuse) and synthesizes one artifact.</div><div>Parallelization and orchestrator-workers fit tasks that split into independent parts; tasks with heavy shared context fit them poorly.<span class="src"><a href="https://www.anthropic.com/research/building-effective-agents">Building effective agents</a> · <a href="https://www.anthropic.com/engineering/multi-agent-research-system">Multi-agent research system</a></span></div></div>
+      <div class="pair"><div><strong>A small, closed tool vocabulary.</strong> Four roles with named operations (<code>tracker.fetch_item</code>, <code>scm.create_branch</code>, <code>browser.render</code>, …), and every operation returns the same envelope.</div><div>Design tools for agents: fewer, consolidated tools with clear namespacing and responses that carry only meaningful context.<span class="src"><a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing tools for agents</a></span></div></div>
+      <div class="pair"><div><strong>Durable state and per-run cost.</strong> <code>run-state.json</code> resumes a run within two hours; <code>analytics.md</code> records peak context and billed input for the run and each subagent.</div><div>Agents carry state across long runs, so they need to resume from the point of failure rather than restart; multi-agent systems spend many more tokens than a chat, so cost has to be measured.<span class="src"><a href="https://www.anthropic.com/engineering/multi-agent-research-system">Multi-agent research system</a></span></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="layers">
+    <div class="section-head">
+      <p class="eyebrow">Three layers</p>
+      <h2>Where determinism <em>stops</em></h2>
+      <p>The core is not one program. It is three layers with a sharp division of work, and the useful thing to know is exactly where a model is needed.</p>
+    </div>
+    <div class="layers">
+      <div class="layer det">
+        <span class="n">Layer 1 · Scripts</span>
+        <p>No model, no tokens. Input is a file, output is one line and an exit code. Each script has a <code>.test.sh</code> beside it, so CI can prove this layer.</p>
+        <p>101 scripts in <code>agentic-core/shared/lib/</code>. The driver names 35 of them, two of which run as its own hooks; the stages call the rest.</p>
+        <p class="items">instructions-stamp · check-preflight · check-credentials · check-run-state · evaluate-stage-conditions · reset-envelope · capture-envelope · run-stage · validate-result-envelope · write-run-state · check-tree-unchanged · derive-branch-name · handle-question · resolve-terminal-state …</p>
+      </div>
+      <div class="layer det">
+        <span class="n">Layer 2 · Contracts</span>
+        <p>Markdown files that define a shape once. Everything else points at them with one line instead of restating them, because a restated rule quietly starts to disagree with itself.</p>
+        <p>33 contracts in <code>agentic-core/shared/</code>.</p>
+        <p class="items">result-envelope · stage-runner · terminal-states · question-protocol · error-handling · fix-loop · gate-contract · pre-flight · pack-manifest · role-operations · fact-record · run-state · external-content-safety · route-policy …</p>
+      </div>
+      <div class="layer mod">
+        <span class="n">Layer 3 · The route driver</span>
+        <p>One skill, <code>agentic-core:run-route</code>. It owns control flow and nothing else, and it is the only component allowed to spawn a stage.</p>
+        <p>It never opens a source file or a path a stage wrote. A <code>PreToolUse</code> hook on <code>Read</code> enforces that while a run is live. Before anything else it proves its own instructions are the copy on disk, so a stale copy cannot run a route with a step missing.</p>
+        <p class="items">skills/run-route/SKILL.md · scripts/check-driver-read.sh</p>
+      </div>
+    </div>
+    <div class="boundary">
+      <p><strong>The one step that needs a model.</strong> Resolving a stage, validating its envelope and choosing the next move are scripts. Spawning the stage as an isolated subagent is not, so the script stops right there and says so about itself:</p>
+      <blockquote>It does not spawn the adapter itself — that is the one step above this script that genuinely needs a model, left to whichever skill drives a full route.<br><span style="color:var(--dim)">— shared/lib/run-stage.sh</span></blockquote>
+    </div>
+    <div class="prose sub">
+      <h3>Two hosts, one driver</h3>
+      <p><strong>Interactive:</strong> a person types <code>/agentic-core:run-route &lt;item&gt; [autonomous]</code>. The skill sets <code>disable-model-invocation: true</code>, so a model never starts a run on its own.</p>
+      <p><strong>Headless:</strong> a CI workflow in the consuming project runs <code>shared/runner/route-agent.mjs</code>. It adds guardrails, not orchestration: <code>dontAsk</code> permissions, a tool allowlist, forbidden-tool rules enforced twice, a write-protected plugin directory, a locked network allowlist, and caps on turns, time and budget. Both hosts run the same driver, the same stages and the same run files.</p>
+    </div>
+  </section>
+
+  <section class="section alt" id="run">
+    <div class="section-head">
+      <p class="eyebrow">One run, step by step</p>
+      <h2>What happens between <em>command</em> and pull request</h2>
+      <p>Read top to bottom. Each row is one step, placed in the column of the layer that does the work.</p>
+    </div>
+    <figure class="shot run">
+      <div class="shot-label"><span>One run of the route driver</span><span>Setup · loop · end</span></div>
+      <div class="shot-frame">
+<svg viewBox="0 0 1200 1140" role="img" aria-labelledby="run-t run-d" style="font-family:Manrope, Arial, sans-serif">
+<title id="run-t">One run of the route driver</title>
+<desc id="run-d">Sixteen numbered steps in three bands. Setup, once: the driver checks its own instructions, runs pre-flight, credential checks and the run-state check as scripts, spawns intake in the platform pack, filters the stage list once and checks session tools. Per stage, in a loop: reset the envelope, spawn the stage adapter as a forked subagent, the adapter works and emits its envelope, scripts capture and judge it, write run state and progress, after readiness only the driver creates the working branch through the scm role, and a question is handled by a script. End, once: scripts resolve exactly one terminal state, delivered, blocked or failed, and render analytics. Steps where a model decides are violet; deterministic steps are cyan.</desc>
+<defs><marker id="ra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#b98cff"/></marker><marker id="rl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8391a8"/></marker></defs>
+<text x="120" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#55e8ff" text-anchor="start" letter-spacing="1.6">LAYER 1 · SCRIPTS</text>
+<rect x="120" y="54" width="320" height="2" fill="#55e8ff" opacity=".55"/>
+<text x="460" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#8391a8" text-anchor="start" letter-spacing="1.6">LAYER 2 · CONTRACTS</text>
+<rect x="460" y="54" width="190" height="2" fill="#8391a8" opacity=".55"/>
+<text x="670" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#b98cff" text-anchor="start" letter-spacing="1.6">LAYER 3 · DRIVER</text>
+<rect x="670" y="54" width="210" height="2" fill="#b98cff" opacity=".55"/>
+<text x="900" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#9ba7bd" text-anchor="start" letter-spacing="1.6">PACKS</text>
+<rect x="900" y="54" width="280" height="2" fill="#9ba7bd" opacity=".55"/>
+<text x="28" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#8391a8" text-anchor="start" letter-spacing="1.6">STEP</text>
+<rect x="14" y="96" width="1172" height="388" fill="rgba(156,182,226,.035)" stroke="rgba(156,182,226,.18)"/>
+<text x="28" y="118" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#9ba7bd" text-anchor="start" font-weight="500" letter-spacing="1.8">ONCE · SETUP</text>
+<rect x="14" y="502" width="1172" height="388" fill="rgba(185,140,255,.05)" stroke="rgba(185,140,255,.35)"/>
+<text x="28" y="524" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#b98cff" text-anchor="start" font-weight="500" letter-spacing="1.8">PER STAGE · LOOP</text>
+<rect x="14" y="908" width="1172" height="138" fill="rgba(156,182,226,.035)" stroke="rgba(156,182,226,.18)"/>
+<text x="28" y="930" font-family="DM Mono, ui-monospace, monospace" font-size="11.5" fill="#9ba7bd" text-anchor="start" font-weight="500" letter-spacing="1.8">ONCE · END</text>
+<line x1="704" y1="124" x2="704" y2="1070" stroke="#b98cff" stroke-width="1.2" opacity=".45"/>
+<path d="M84 854.0 H96 V554.0 H108" fill="none" stroke="#b98cff" stroke-width="1.3" marker-end="url(#ra)"/>
+<text x="76" y="704.0" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#b98cff" text-anchor="middle" transform="rotate(-90 76 704.0)" letter-spacing="1">next stage</text>
+<line x1="120" y1="173" x2="1180" y2="173" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="153.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">01</text>
+<rect x="120" y="130" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="145" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">instructions-stamp.sh</text>
+<text x="130" y="159" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">own instructions current? stale copy stops</text>
+<circle cx="704" cy="148.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="152.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">checks itself</text>
+<line x1="120" y1="223" x2="1180" y2="223" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="203.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">02</text>
+<rect x="120" y="180" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="195" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">check-preflight.sh</text>
+<text x="130" y="209" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">config, packs, manifests  → blocked</text>
+<rect x="460" y="187" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="202" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">pre-flight.md</text>
+<circle cx="704" cy="198.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="202.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="273" x2="1180" y2="273" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="253.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">03</text>
+<rect x="120" y="230" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="245" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">check-credentials.sh</text>
+<text x="130" y="259" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">probes each pack declares  → blocked</text>
+<circle cx="704" cy="248.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="252.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="323" x2="1180" y2="323" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="303.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">04</text>
+<rect x="120" y="280" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="295" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">check-run-state.sh</text>
+<text x="130" y="309" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">under two hours: resume, else start fresh</text>
+<rect x="460" y="287" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="302" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">run-state.md</text>
+<circle cx="704" cy="298.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="302.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="373" x2="1180" y2="373" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="353.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#b98cff" text-anchor="start">05</text>
+<rect x="900" y="330" width="280" height="36" fill="rgba(185,140,255,.12)" stroke="#b98cff" stroke-width="1.3"/>
+<text x="910" y="345" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">intake · tracker.fetch_item</text>
+<text x="910" y="359" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">sanitize the item, write the fact record</text>
+<rect x="460" y="337" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="352" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">external-content-safety.md</text>
+<circle cx="704" cy="348.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="352.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#b98cff" text-anchor="start" font-style="italic">spawns</text>
+<line x1="120" y1="423" x2="1180" y2="423" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="403.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">06</text>
+<rect x="120" y="380" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="395" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">evaluate-stage-conditions.sh</text>
+<text x="130" y="409" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">15 stage ids  → this run&#x27;s stage list</text>
+<rect x="460" y="387" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="402" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">pack-manifest.md</text>
+<circle cx="704" cy="398.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="402.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls once</text>
+<line x1="120" y1="473" x2="1180" y2="473" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="453.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">07</text>
+<rect x="120" y="430" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="445" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">check-session-tools.sh</text>
+<text x="130" y="459" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">tools a pack needs present?  → blocked</text>
+<circle cx="704" cy="448.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="452.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="579" x2="1180" y2="579" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="559.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">08</text>
+<rect x="120" y="536" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="551" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">reset-envelope.sh</text>
+<text x="130" y="565" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">gates also: check-tree-unchanged.sh snapshot</text>
+<circle cx="704" cy="554.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="558.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="629" x2="1180" y2="629" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="609.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#b98cff" text-anchor="start">09</text>
+<rect x="670" y="586" width="210" height="36" fill="rgba(185,140,255,.12)" stroke="#b98cff" stroke-width="1.3"/>
+<text x="680" y="601" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">Skill(pack:stage)</text>
+<text x="680" y="615" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">spawn the adapter, context: fork</text>
+<line x1="120" y1="679" x2="1180" y2="679" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="659.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#b98cff" text-anchor="start">10</text>
+<rect x="900" y="636" width="280" height="36" fill="rgba(185,140,255,.12)" stroke="#b98cff" stroke-width="1.3"/>
+<text x="910" y="651" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">stage adapter</text>
+<text x="910" y="665" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">does the work, calls roles, emit-envelope.sh</text>
+<rect x="460" y="643" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="658" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">result-envelope.md</text>
+<circle cx="704" cy="654.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="658.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">waits</text>
+<line x1="120" y1="729" x2="1180" y2="729" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="709.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">11</text>
+<rect x="120" y="686" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="701" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">capture-envelope · run-stage.sh</text>
+<text x="130" y="715" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">continue | question | terminate</text>
+<rect x="460" y="693" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="708" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">stage-runner.md</text>
+<circle cx="704" cy="704.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="708.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">reads 5 lines</text>
+<line x1="120" y1="779" x2="1180" y2="779" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="759.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">12</text>
+<rect x="120" y="736" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="751" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">write-run-state · write-progress-row</text>
+<text x="130" y="765" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">state, progress and flag refreshed</text>
+<rect x="460" y="743" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="758" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">progress-output.md</text>
+<circle cx="704" cy="754.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="758.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="829" x2="1180" y2="829" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="809.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#ffcf6e" text-anchor="start">13</text>
+<rect x="900" y="786" width="280" height="36" fill="rgba(255,207,110,.07)" stroke="#ffcf6e" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="910" y="801" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#ffcf6e" text-anchor="start" font-weight="500">scm.create_branch</text>
+<text x="910" y="815" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">name from derive-branch-name.sh</text>
+<circle cx="704" cy="804.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="808.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls directly</text>
+<text x="122" y="808.0" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#ffcf6e" text-anchor="start" font-style="italic">only after readiness · check-item-satisfied.sh first</text>
+<line x1="120" y1="879" x2="1180" y2="879" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="859.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">14</text>
+<rect x="120" y="836" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="851" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">handle-question.sh</text>
+<text x="130" y="865" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">ask a person, or post the blocker</text>
+<rect x="460" y="843" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="858" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">question-protocol.md</text>
+<circle cx="704" cy="854.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="858.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">on question</text>
+<text x="902" y="858.0" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start" font-style="italic">autonomous: tracker.post_note  → blocked</text>
+<line x1="120" y1="985" x2="1180" y2="985" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="965.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">15</text>
+<rect x="120" y="942" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="957" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">resolve-terminal-state.sh</text>
+<text x="130" y="971" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">then finalize-run-state.sh: one end</text>
+<rect x="460" y="949" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="964" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">terminal-states.md</text>
+<circle cx="704" cy="960.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="964.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<line x1="120" y1="1035" x2="1180" y2="1035" stroke="rgba(156,182,226,.08)"/>
+<text x="28" y="1015.0" font-family="DM Mono, ui-monospace, monospace" font-size="13" fill="#55e8ff" text-anchor="start">16</text>
+<rect x="120" y="992" width="320" height="36" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="1.3"/>
+<text x="130" y="1007" font-family="DM Mono, ui-monospace, monospace" font-size="12" fill="#f7f8fb" text-anchor="start" font-weight="500">render-run-analytics.sh</text>
+<text x="130" y="1021" font-family="Manrope, Arial, sans-serif" font-size="10.5" fill="#9ba7bd" text-anchor="start">analytics.md: peak context, billed input</text>
+<rect x="460" y="999" width="190" height="22" fill="none" stroke="#8391a8" stroke-dasharray="3 3"/>
+<text x="555.0" y="1014" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#cdd6e4" text-anchor="middle">analytics.md</text>
+<circle cx="704" cy="1010.0" r="3.5" fill="#071020" stroke="#b98cff" stroke-width="1.3"/>
+<text x="716" y="1014.0" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start" font-style="italic">calls</text>
+<path d="M880 604.0 H890 V654.0 H898" fill="none" stroke="#b98cff" stroke-width="1.4" marker-end="url(#ra)"/>
+<path d="M930 672 V680 H444" fill="none" stroke="#8391a8" stroke-width="1.1" stroke-dasharray="4 3" marker-end="url(#rl)"/>
+<text x="938" y="694" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">## Result, 5 lines</text>
+<text x="120" y="1096" font-family="Manrope, Arial, sans-serif" font-size="12" fill="#9ba7bd" text-anchor="start">the run ends in exactly one of</text>
+<rect x="480" y="1078" width="87.8" height="28" rx="14" fill="none" stroke="#55e8ff" stroke-width="1.5"/>
+<text x="523.9" y="1097" font-family="DM Mono, ui-monospace, monospace" font-size="12.5" fill="#55e8ff" text-anchor="middle" font-weight="500">delivered</text>
+<rect x="585.8" y="1078" width="71.39999999999999" height="28" rx="14" fill="none" stroke="#ffcf6e" stroke-width="1.5"/>
+<text x="621.5" y="1097" font-family="DM Mono, ui-monospace, monospace" font-size="12.5" fill="#ffcf6e" text-anchor="middle" font-weight="500">blocked</text>
+<rect x="675.1999999999999" y="1078" width="63.199999999999996" height="28" rx="14" fill="none" stroke="#ff9a8f" stroke-width="1.5"/>
+<text x="706.8" y="1097" font-family="DM Mono, ui-monospace, monospace" font-size="12.5" fill="#ff9a8f" text-anchor="middle" font-weight="500">failed</text>
+</svg>
+      </div>
+      <p class="scroll-hint">Scroll the figure sideways to see every column.</p>
+      <div class="key">
+        <span><i class="sw det"></i>Deterministic code decides</span>
+        <span><i class="sw mod"></i>A model decides</span>
+        <span><i class="sw ref"></i>Contract the step follows</span>
+        <span><i class="sw br"></i>Only after <code>readiness</code></span>
+      </div>
+      <figcaption>Setup runs once, the loop runs once per stage on the filtered list, the end runs once. Inside the loop a model does exactly two things: the driver spawns the stage, and the stage does its work. Every decision about what happens next is a script reading the five-line envelope.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section" id="vocabulary">
+    <div class="section-head">
+      <p class="eyebrow">The core's vocabulary</p>
+      <h2>Everything the core <em>knows</em></h2>
+      <p>This is the whole vocabulary. A word outside it belongs to a pack.</p>
+    </div>
+
+    <div class="sub" style="margin-top:0">
+      <h3>Fifteen stage ids</h3>
+      <p class="prose" style="color:var(--muted)">Fixed and platform-neutral, in the order a full route runs them. A pack implements an id or declines it; no pack may add one. Gates are outlined.</p>
+      <ol class="chips">
+        <li>intake</li><li class="gate">readiness</li><li>extract</li><li>conventions</li><li>serve</li>
+        <li>baseline</li><li>prototype</li><li>verify-design</li><li>plan</li><li class="gate">plan-gate</li>
+        <li>implement</li><li>verify</li><li>lint</li><li class="gate">publish-gate</li><li>deliver</li>
+      </ol>
+    </div>
+
+    <div class="sub">
+      <h3>Four roles and their operations</h3>
+      <dl class="defs">
+        <div><dt>tracker</dt><dd>Where the work item lives.<span class="ops">fetch_item · post_note · attach_file · list_types · create_item · update_item</span></dd></div>
+        <div><dt>scm</dt><dd>Where the change is published.<span class="ops">create_branch · publish_change · check_status</span></dd></div>
+        <div><dt>design</dt><dd>Where the design reference comes from.<span class="ops">fetch_reference</span></dd></div>
+        <div><dt>browser</dt><dd>What renders and measures the page.<span class="ops">render · capture · measure · interact</span></dd></div>
+      </dl>
+      <p class="prose" style="color:var(--muted);margin-top:1rem">A stage calls an operation by role, never by pack name. Project config binds each role to one provider pack, and the pack is found by its plugin name through a registry each plugin writes at session start, never by a relative folder path.</p>
+    </div>
+
+    <div class="sub two">
+      <div>
+        <h3>The result envelope</h3>
+<pre class="envelope"><span class="k">## Result</span>
+<span class="k">verdict:</span> pass | warn | fail | question
+<span class="k">summary:</span> &lt;one sentence&gt;
+<span class="k">artifacts:</span>
+  - &lt;path written or updated&gt;
+<span class="k">next_action:</span> &lt;short phrase, or "none"&gt;
+<span class="c"># on fail or question:</span>
+<span class="k">error_class:</span> TRANSIENT | VALIDATION | PERMANENT
+<span class="c"># on question:</span>
+<span class="k">question:</span> …   <span class="k">blocker:</span> …   <span class="k">options:</span> …</pre>
+        <p style="color:var(--muted);margin-top:1rem;font-size:.95rem">Every stage and every role operation ends with this block. It must be the last thing emitted; the driver reads nothing else.</p>
+      </div>
+      <div>
+        <h3>Verdicts</h3>
+        <dl class="defs verdicts">
+          <div><dt>pass</dt><dd>Go to the next stage.</dd></div>
+          <div><dt class="warn">warn</dt><dd>Go on; the warning is recorded. Never terminal.</dd></div>
+          <div><dt class="fail">fail</dt><dd>The run ends. The driver never retries.</dd></div>
+          <div><dt class="q">question</dt><dd>Asked at the stage boundary only. Interactive: a person answers and the stage runs once more. Autonomous: the blocker is posted to the item and the run ends <code>blocked</code>.</dd></div>
+        </dl>
+        <h3 style="margin-top:1.6rem">error_class</h3>
+        <dl class="defs">
+          <div><dt>TRANSIENT</dt><dd>The environment is busy: a timeout, a quota. Ends <code>blocked</code> with the remedy.</dd></div>
+          <div><dt>PERMANENT</dt><dd>The environment is missing something: a tool, a login. Ends <code>blocked</code> with the remedy.</dd></div>
+          <div><dt>VALIDATION</dt><dd>The input itself was wrong. The verdict decides: <code>fail</code> ends <code>failed</code>.</dd></div>
+        </dl>
+      </div>
+    </div>
+    <p class="prose" style="color:var(--muted);margin-top:2rem">A stage that fans out to subagents of its own uses a second block, <code>## Outcome</code> with <code>status: success | warning | failure</code>. It shares no word with the envelope, so a block from the wrong tier fails validation instead of silently matching a branch.</p>
+  </section>
+
+  <section class="section alt" id="ends">
+    <div class="section-head">
+      <p class="eyebrow">Gates and terminal states</p>
+      <h2>Three gates, three <em>endings</em></h2>
+      <p>Gates are ordinary stages to the driver. What makes them gates is what runs inside and what they may write.</p>
+    </div>
+    <div class="prose">
+      <p><code>readiness</code>, <code>plan-gate</code> and <code>publish-gate</code> are the three gates. Inside each, the order is fixed: deterministic criteria scripts first, then a reviewing model only on what survives, on a stronger model tier. <code>readiness</code> writes nothing. The two reviewing gates write exactly two files, their findings report and their envelope. The driver snapshots the project tree before a gate and compares after; any other change ends the stage <code>failed</code>, whatever the envelope says.</p>
+    </div>
+    <div class="ends">
+      <div class="ok"><span class="tag">delivered</span><p><code>deliver</code> returned <code>pass</code>.</p><p>Prints the status table and the published location.</p></div>
+      <div class="bl"><span class="tag">blocked</span><p>A question unanswered or posted back, a pre-flight or credential failure, a dirty tree at a fresh start, work already on the base branch, or an environment fault.</p><p>Prints what is missing and where it was recorded.</p></div>
+      <div class="fa"><span class="tag">failed</span><p>A stage returned <code>fail</code>, or a contract violation: an envelope that does not validate, a stage that cannot be resolved, a gate that changed the tree.</p><p>Prints the failing stage and its summary.</p></div>
+    </div>
+    <p class="claim">Exactly one of the three ends every run. <code>warn</code> is never one of them.</p>
+  </section>
+
+  <section class="section" id="rejected">
+    <div class="section-head">
+      <p class="eyebrow">Rejected alternatives</p>
+      <h2>Shapes it was measured <em>against</em></h2>
+      <p>Kept because the reasoning behind a rejection is what nobody reconstructs later.</p>
+    </div>
+    <ul class="chapters">
+      <li class="chapter"><p class="chapter-marker">Wrong layer</p><div><h3>A shell loop as the orchestrator</h3><p>A script calling <code>run-stage.sh</code> in a loop. But <code>run-stage.sh</code> does not spawn the stage, on purpose. The loop would validate envelope files nobody had written and would "pass" having done nothing. The driver has to spawn a subagent, and only a skill can.</p></div></li>
+      <li class="chapter"><p class="chapter-marker">Conflicts with pre-flight</p><div><h3>A liveness probe instead of a declaration</h3><p>Pre-flight would prove a capability by calling it: start the tool, see whether something answers. A false negative there aborts a run before a branch exists, on sandbox or network conditions the pack author does not control, and a tool that answered once has not shown it is configured.</p><p>So pre-flight reads what each pack declares. A provider pack lists its local preconditions with a probe and a remedy, the read-only <code>health</code> skill runs those probes on demand, and the operation itself refuses to run without its tool.</p></div></li>
+      <li class="chapter"><p class="chapter-marker">Duplicate state</p><div><h3>A second state file and a second progress file</h3><p>Both already exist: <code>run-state.json</code> and <code>progress.md</code>, with the two-hour resume window and a refresh after every stage. Two files for one state is a source of divergence, not redundancy.</p></div></li>
+    </ul>
+  </section>
+
+  <div class="part-band" id="eds">
+    <p class="eyebrow">Part two</p>
+    <h2>A platform pack: <em>agentic-eds</em></h2>
+    <p>One worked example of how a platform binds the core's stages. Everything in this part is the pack's, not the core's.</p>
+  </div>
+
+  <section class="section">
+    <div class="note">
+      <p><strong>EDS is one swappable platform pack.</strong> The core has a closed list of fifteen stages; a pack implements or declines each one and never adds a new one (D42). A React or Next.js pack could bind the same stages its own way tomorrow, with no change to the core. Behaviour no stage id covers goes inside a stage the pack already owns.</p>
+    </div>
+    <div class="section-head" style="margin-top:clamp(2.5rem,5vw,4rem)">
+      <p class="eyebrow">The default route</p>
+      <h2>Fifteen stages, four of them <em>conditional</em></h2>
+      <p>From <code>agentic-eds/pack.yaml</code>. A filtered list, not a branching graph: conditions are checked once, after <code>intake</code>, and a skipped stage passes control to the next in list order.</p>
+    </div>
+    <figure class="shot route">
+      <div class="shot-label"><span>agentic-eds · route.dot</span><span>Conditions from the fact record</span></div>
+      <div class="shot-frame">
+<svg viewBox="0 0 1200 430" role="img" aria-labelledby="rt-t rt-d" style="font-family:Manrope, Arial, sans-serif">
+<title id="rt-t">The agentic-eds default route</title>
+<desc id="rt-d">Fifteen stages in three rows of five, in list order. Gates: readiness, plan-gate, publish-gate. Conditional: extract, prototype and verify-design run when design_source or design_mentioned is true; baseline runs when components are present. Edit budgets: verify-design 2, plan 1, lint 3. The driver creates the working branch between readiness and extract. After deliver, the run is delivered.</desc>
+<defs><marker id="ro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8391a8"/></marker><marker id="rc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#55e8ff"/></marker></defs>
+<line x1="186" y1="87.0" x2="225" y2="87.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="400" y1="87.0" x2="439" y2="87.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="614" y1="87.0" x2="653" y2="87.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="828" y1="87.0" x2="867" y2="87.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<path d="M1042 87.0 H1060 Q1072 87.0 1072 99.0 V140 Q1072 150 1060 150 H110.0 Q100.0 150 100.0 160 V185" fill="none" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="186" y1="211.0" x2="225" y2="211.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="400" y1="211.0" x2="439" y2="211.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="614" y1="211.0" x2="653" y2="211.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="828" y1="211.0" x2="867" y2="211.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<path d="M1042 211.0 H1060 Q1072 211.0 1072 223.0 V264 Q1072 274 1060 274 H110.0 Q100.0 274 100.0 284 V309" fill="none" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="186" y1="335.0" x2="225" y2="335.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="400" y1="335.0" x2="439" y2="335.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="614" y1="335.0" x2="653" y2="335.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="828" y1="335.0" x2="867" y2="335.0" stroke="#8391a8" stroke-width="1.3" marker-end="url(#ro)"/>
+<line x1="1042" y1="335.0" x2="1069" y2="335.0" stroke="#55e8ff" stroke-width="1.4" marker-end="url(#rc)"/>
+<rect x="1072" y="321" width="114" height="28" rx="14" fill="none" stroke="#55e8ff" stroke-width="1.6"/>
+<text x="1129" y="340" font-family="DM Mono, ui-monospace, monospace" font-size="12.5" fill="#55e8ff" text-anchor="middle" font-weight="500">delivered</text>
+<rect x="14" y="64" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="24" y="83" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">01</text>
+<text x="48" y="83" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">intake</text>
+<text x="48" y="99" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="228" y="64" width="172" height="46" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="2.4"/>
+<text x="238" y="83" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">02</text>
+<text x="262" y="83" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">readiness</text>
+<text x="262" y="99" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#55e8ff" text-anchor="start">gate</text>
+<rect x="442" y="64" width="172" height="46" fill="#071020" stroke="#9ba7bd" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="452" y="83" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">03</text>
+<text x="476" y="83" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">extract</text>
+<text x="476" y="99" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">conditional</text>
+<text x="528.0" y="127" font-family="DM Mono, ui-monospace, monospace" font-size="9.5" fill="#ffcf6e" text-anchor="middle">design_source OR design_mentioned</text>
+<rect x="656" y="64" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="666" y="83" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">04</text>
+<text x="690" y="83" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">conventions</text>
+<text x="690" y="99" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="870" y="64" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="880" y="83" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">05</text>
+<text x="904" y="83" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">serve</text>
+<text x="904" y="99" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="14" y="188" width="172" height="46" fill="#071020" stroke="#9ba7bd" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="24" y="207" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">06</text>
+<text x="48" y="207" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">baseline</text>
+<text x="48" y="223" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">conditional</text>
+<text x="100.0" y="251" font-family="DM Mono, ui-monospace, monospace" font-size="9.5" fill="#ffcf6e" text-anchor="middle">components = present</text>
+<rect x="228" y="188" width="172" height="46" fill="#071020" stroke="#9ba7bd" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="238" y="207" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">07</text>
+<text x="262" y="207" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">prototype</text>
+<text x="262" y="223" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">conditional</text>
+<text x="314.0" y="251" font-family="DM Mono, ui-monospace, monospace" font-size="9.5" fill="#ffcf6e" text-anchor="middle">design_source OR design_mentioned</text>
+<rect x="442" y="188" width="172" height="46" fill="#071020" stroke="#9ba7bd" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="452" y="207" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">08</text>
+<text x="476" y="207" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">verify-design</text>
+<text x="476" y="223" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">conditional · 2 edits</text>
+<text x="528.0" y="251" font-family="DM Mono, ui-monospace, monospace" font-size="9.5" fill="#ffcf6e" text-anchor="middle">design_source OR design_mentioned</text>
+<rect x="656" y="188" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="666" y="207" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">09</text>
+<text x="690" y="207" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">plan</text>
+<text x="690" y="223" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always · 1 edit</text>
+<rect x="870" y="188" width="172" height="46" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="2.4"/>
+<text x="880" y="207" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">10</text>
+<text x="904" y="207" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">plan-gate</text>
+<text x="904" y="223" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#55e8ff" text-anchor="start">gate</text>
+<rect x="14" y="312" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="24" y="331" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">11</text>
+<text x="48" y="331" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">implement</text>
+<text x="48" y="347" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="228" y="312" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="238" y="331" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">12</text>
+<text x="262" y="331" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">verify</text>
+<text x="262" y="347" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="442" y="312" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="452" y="331" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">13</text>
+<text x="476" y="331" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">lint</text>
+<text x="476" y="347" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always · 3 edits</text>
+<rect x="656" y="312" width="172" height="46" fill="rgba(85,232,255,.08)" stroke="#55e8ff" stroke-width="2.4"/>
+<text x="666" y="331" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">14</text>
+<text x="690" y="331" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">publish-gate</text>
+<text x="690" y="347" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#55e8ff" text-anchor="start">gate</text>
+<rect x="870" y="312" width="172" height="46" fill="#0a1427" stroke="#9ba7bd" stroke-width="1.3"/>
+<text x="880" y="331" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#8391a8" text-anchor="start">15</text>
+<text x="904" y="331" font-family="Manrope, Arial, sans-serif" font-size="13" fill="#f7f8fb" text-anchor="start" font-weight="600">deliver</text>
+<text x="904" y="347" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#9ba7bd" text-anchor="start">always</text>
+<path d="M421.0 80.0 L428.0 87.0 L421.0 94.0 L414.0 87.0z" fill="#ffcf6e"/>
+<text x="421.0" y="42" font-family="DM Mono, ui-monospace, monospace" font-size="10.5" fill="#ffcf6e" text-anchor="middle" font-weight="500">driver: scm.create_branch</text>
+<line x1="421.0" y1="48" x2="421.0" y2="78.0" stroke="#ffcf6e" stroke-dasharray="2 2"/>
+<rect x="30" y="401" width="24" height="13" fill="#0a1427" stroke="#9ba7bd"/>
+<text x="62" y="412" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start">always</text>
+<rect x="130" y="401" width="24" height="13" fill="none" stroke="#9ba7bd" stroke-dasharray="4 2"/>
+<text x="162" y="412" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start">conditional on the fact record</text>
+<rect x="360" y="401" width="24" height="13" fill="none" stroke="#55e8ff" stroke-width="2.2"/>
+<text x="392" y="412" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start">gate: deterministic checks first, then a reviewing model</text>
+<path d="M750 401 L757 408 L750 415 L743 408z" fill="#ffcf6e"/>
+<text x="766" y="412" font-family="Manrope, Arial, sans-serif" font-size="11" fill="#9ba7bd" text-anchor="start">the driver&#x27;s own provider call</text>
+</svg>
+      </div>
+      <p class="scroll-hint">Scroll the figure sideways to see the whole route.</p>
+      <figcaption>A dashed stage runs only when its <code>when:</code> matches the fact record <code>intake</code> wrote. The driver creates the working branch itself, right after <code>readiness</code> and before the first stage that may write.</figcaption>
+    </figure>
+
+    <div class="cards sub">
+      <div>
+        <span class="tag">Gate reviewer agent</span>
+        <p>Both reviewing gates, <code>eds-plan-gate</code> and <code>eds-publish-gate</code>, run as <code>agentic-eds:eds-gate-reviewer</code>: <code>model: opus</code>, <code>effort: high</code>, <code>isolation: worktree</code>, tools <code>Read, Glob, Grep, Bash, Write</code>.</p>
+        <p>It reviews, it never fixes, and it writes exactly two files. Because the harness may run it without the worktree, the gate checks its own isolation (<code>check-gate-isolation.sh</code>) and records <code>present</code> or <code>absent</code> in its report. It never changes the verdict; the driver's tree snapshot is what holds the two-file rule either way.</p>
+      </div>
+      <div>
+        <span class="tag">Conventions subagents</span>
+        <p><code>eds-conventions</code> learns the project before anything is written. It dispatches three subagents of its own, <code>styles</code>, <code>markup</code> and <code>component reuse</code>, and synthesizes one conventions artifact.</p>
+        <p>The subagents answer with the inner <code>## Outcome</code> block; the stage reports its own envelope and never passes a subagent's outcome through unchanged.</p>
+      </div>
+      <div>
+        <span class="tag">Edit budgets</span>
+        <p>A <code>fix_attempts</code> value is a budget of edits, declared only on a stage that asks <code>check-fix-budget.sh</code> before each edit.</p>
+        <ul class="budgets">
+          <li><b>verify-design</b> · 2 edits</li>
+          <li><b>plan</b> · 1 edit</li>
+          <li><b>lint</b> · 3 edits</li>
+        </ul>
+        <p>Any other stage uses <code>limits.fix_attempts_default</code> from project config.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Read from <code>agentic-core</code> 0.2.18 and <code>agentic-eds</code> 0.2.14 on <code>main</code>: the driver skill, <code>shared/</code>, <code>pack.yaml</code> and <code>route.dot</code>. Counts are file counts in those folders.</p>
+  <p><a class="pl" href="../">All parts</a> · <a class="pl" href="https://github.com/agenticDraft/plugins">Repo</a></p>
+</footer>
+</body>
+</html>
