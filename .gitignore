@@ -7,5 +7,5 @@
 # OS noise
 .DS_Store
 
-# Project-specific files
-docs/
+# Private working notes, never published
+.local-notes/
