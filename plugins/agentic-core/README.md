@@ -1,6 +1,6 @@
 # agentic-core — the delivery core that names no product
 
-Short presetation: https://agenticdraft.github.io/aem-eds-ai-workflow-demo/ 
+Short presentation: https://agenticdraft.github.io/plugins/
 
 Runs one delivery route over one work item: it resolves the route from a platform pack's
 manifest, spawns each stage's adapter as an isolated subagent, reads only the result envelope
