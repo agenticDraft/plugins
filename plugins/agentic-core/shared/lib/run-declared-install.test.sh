@@ -208,6 +208,17 @@ else
 fi
 
 echo "[readers] nothing but this script runs install, and only setup calls it"
+. "$SCRIPT_DIR/register-source-tree.sh"
+if ! in_source_tree; then
+  echo "  skipped: not the source tree, so the other plugins' files are not reachable from here"
+  echo
+  if [[ "$FAIL" -eq 0 ]]; then
+    echo "=== $PASS passed, 0 failed ==="
+    exit 0
+  fi
+  echo "=== $PASS passed, $FAIL failed ==="
+  exit 1
+fi
 PLUGINS="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 code_files() {
   find "$PLUGINS" -type d -name node_modules -prune -o -type f \

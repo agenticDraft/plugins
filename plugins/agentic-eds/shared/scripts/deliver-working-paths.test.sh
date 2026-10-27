@@ -17,6 +17,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CORE="$PACK_ROOT/core/lib"
 
+. "$CORE/register-source-tree.sh"
+if ! in_source_tree; then
+  echo "=== deliver-working-paths.test.sh ==="
+  echo "  skipped: not the source tree, so the scm pack is not this pack's sibling"
+  exit 0
+fi
+
 PASS=0
 FAIL=0
 check() {
@@ -70,7 +77,6 @@ git -C "$P" add -A && git -C "$P" commit -q -m base && git -C "$P" push -q origi
 git -C "$P" remote set-head origin main >/dev/null
 git -C "$P" switch -q -c ex-1
 
-. "$CORE/register-source-tree.sh"
 register_source_tree "$P" || { echo "the source tree's plugins could not be registered" >&2; exit 1; }
 
 # The run's change, and its fixture.

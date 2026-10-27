@@ -19,6 +19,12 @@ bad() { FAIL=$((FAIL + 1)); echo "  FAIL: $1"; }
 
 echo "=== run-paths.txt tests ==="
 
+if [[ "$(basename "$(cd "$SCRIPT_DIR/.." && pwd -P)")" != shared ]]; then
+  echo "  skipped: a pack's copy of the core; the core's own copy runs these checks"
+  echo "=== $PASS passed, $FAIL failed ==="
+  exit 0
+fi
+
 echo "[shape] the file exists, and every line is a comment, blank, or '<ignore|commit> <path>'"
 if [[ ! -f "$LIST_FILE" ]]; then
   bad "shared/run-paths.txt exists"

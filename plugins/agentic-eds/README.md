@@ -213,7 +213,7 @@ paths:
   preview: "http://localhost:3000/preview"
 ```
 
-**The offline test suites, this run:** 36 test files, every one exit 0.
+**The offline test suites, this run:** 43 test files, every one exit 0.
 
 ## Install
 

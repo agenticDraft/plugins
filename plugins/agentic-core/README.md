@@ -218,12 +218,12 @@ ok: no requirements declared
 
 ```text
 $ bash plugins/agentic-core/shared/lib/validate-naming-rule.sh plugins/agentic-core
-valid: naming rule (698 files scanned, 39 terms checked)
+valid: naming rule (707 files scanned, 39 terms checked)
 $ bash plugins/agentic-core/shared/lib/check-no-narrative.sh plugins/agentic-core
-valid: no narrative (620 files scanned)
+valid: no narrative (630 files scanned)
 ```
 
-**The test suites, this run:** 107 test files, every one exit 0.
+**The test suites, this run:** 112 test files, every one exit 0.
 
 ## Install
 
