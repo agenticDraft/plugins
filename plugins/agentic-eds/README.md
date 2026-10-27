@@ -299,12 +299,9 @@ This pack applies that rule fifteen times. What the tracker said, what the brows
 what the design tool returned each cross one boundary and come out the other side as an
 artifact `pack.yaml` declares.
 
-This pack adapts patterns from earlier work under the terms recorded in [NOTICE](NOTICE).
-
 ---
 
 agenticDraft
 
 License: not declared in `.claude-plugin/plugin.json`. The pinned block collection carries its
-own Apache-2.0 `LICENSE` under `shared/block-collection/`. Attribution and terms for adapted
-material: [NOTICE](NOTICE).
+own Apache-2.0 `LICENSE` under `shared/block-collection/`.

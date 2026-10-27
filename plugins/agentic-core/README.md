@@ -286,7 +286,6 @@ A project installs it by the `settings.json` in the [getting-started guide](../g
 ```text
 agentic-core/
 ├── .claude-plugin/plugin.json     # name, description, version, author
-├── NOTICE                          # attribution for adapted material
 ├── skills/
 │   ├── setup/SKILL.md
 │   ├── health/SKILL.md
@@ -342,11 +341,8 @@ How a pack reaches anything outside itself:
 This core is a small instance of one rule: what the driver cannot see, it cannot drift into
 re-doing. A pack can be swapped only because the core never learned its name.
 
-This plugin adapts patterns from earlier work under the terms recorded in [NOTICE](NOTICE).
-
 ---
 
 agenticDraft
 
-License: not declared in `.claude-plugin/plugin.json`. Attribution and terms for adapted
-material: [NOTICE](NOTICE).
+License: not declared in `.claude-plugin/plugin.json`.
