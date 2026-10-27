@@ -243,11 +243,23 @@ Then **start a new session**: the credentials and the sandbox allowlist are read
 
 `health` reports what is loaded, which pack each role resolves to, each declared variable and host, and each pack's unmet preconditions with the remedy the pack states.
 
-## 6. Commit the files `setup` named
+## 6. Commit and push the files `setup` named
 
-A run starts only on a working tree with nothing uncommitted. `setup`'s report lists the files to commit (the config, the committed settings, `.gitignore`, and whatever an install changed); commit them before the first run. Do not ignore `.ai/` as a whole: some of what is in it is meant to be committed, and the block above says which.
+A run starts only on a working tree with nothing uncommitted. `setup`'s report lists the files to commit (the config, the committed settings, `.gitignore`, and whatever an install changed); commit them and push them to the default branch before the first run. A commit that is not on the remote's default branch still counts as a change, and the run refuses to start. Do not ignore `.ai/` as a whole: some of what is in it is meant to be committed, and the block above says which.
 
-## 7. Make the first route run
+## 7. Write the work item
+
+A run reads its work item from the tracker, with fixed patterns, and a readiness check accepts or refuses it before any work starts. Write the item with:
+
+```text
+/agentic-core:write-specs
+```
+
+Describe what should change, and name the item's key if it already exists. `write-specs` writes a draft to `.ai/specs/<ITEM-KEY>/draft.md`, runs its checker on it until it passes, writes the item to the tracker through the tracker pack, and runs the checker again on the live item. It ends with the item's key and URL. If the tracker pack cannot write the item, it says why first and hands you the summary and description to paste into the tracker yourself.
+
+The item lives in the tracker project named under "What no pack declares", so that project and its issue types must exist first. Before the run, commit the draft and push it to the default branch. `.ai/specs/` is committed on purpose, and a run starts only when nothing differs from the default branch on the remote: a draft that is untracked, or committed but not pushed, makes it refuse to start (`refused: … changed: .ai/specs/<ITEM-KEY>/draft.md`).
+
+## 8. Make the first route run
 
 ```text
 /agentic-core:run-route <work item id or URL>
@@ -263,7 +275,7 @@ A headless run (the runner, started by CI or a trigger) needs three things a bar
 - a settings file carrying `sandbox.network.allowedDomains`, and
 - the model credential in the runner's environment (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`).
 
-The runner starts nothing without the first two: it exits `3` when the policy is missing and `6` when the allowlist is missing or unusable. An interactive session in steps 1 to 7 needs none of them.
+The runner starts nothing without the first two: it exits `3` when the policy is missing and `6` when the allowlist is missing or unusable. An interactive session in steps 1 to 8 needs none of them.
 
 ## Letting Claude follow this guide
 
@@ -276,10 +288,10 @@ a password into a file that git tracks; I will set credentials myself. If a step
 does not say, stop and tell me what is missing instead of guessing. When step 2 is done, tell me to start a new session.
 ```
 
-Then start a second session and paste the same prompt with "step 3 only" in place of "steps 1 and 2 only" and without the last sentence. Fill in the placeholders yourself (step 4), open a third session, and continue with steps 5 to 7.
+Then start a second session and paste the same prompt with "step 3 only" in place of "steps 1 and 2 only" and without the last sentence. Fill in the placeholders yourself (step 4), open a third session, and continue with steps 5 to 8.
 
 ## What this guide has not verified
 
-The block under "What each pack needs" is checked against the manifests by `scripts/check-getting-started.sh`. The text around it is not: it describes `setup`'s questions and writes from reading its skill, not from a run. A run from a project that did not build the plugins, following only this page, has not been made yet. A step that needs something this page does not say is a defect in the page.
+The block under "What each pack needs" is checked against the manifests by `scripts/check-getting-started.sh`. The text around it is not: it describes `setup`'s questions and writes, and `write-specs`' steps, from reading their skills, not from a run. A run from a project that did not build the plugins, following only this page, has not been made yet. A step that needs something this page does not say is a defect in the page.
 
 Measured earlier: step 2 on a machine that already knew the `agenticdraft` marketplace (before the install every pack was reported `not cached`; after the six `install --scope project` lines there were six records for the project, and the next session wrote six roots into `.ai/run-context/plugin-roots/`). Not measured: a machine that has never added the marketplace; the committed block with the `adobe-skills` `ref`; whether a `~/.claude/settings.json` that declares `adobe-skills` without that `ref` conflicts with it, as step 1 says happens for `agenticdraft`; the user-scope install lines; a headless route run with those plugins enabled; and `github.com` as an allowed host for a project whose git remote is HTTPS.
