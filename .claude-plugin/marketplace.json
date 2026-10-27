@@ -52,7 +52,7 @@
       "displayName": "Agentic Core",
       "source": "./plugins/agentic-core",
       "description": "Agnostic delivery core: sequences stages, spawns pack adapters as subagents, reads the result envelope and branches. Names no tracker, SCM, design tool or browser.",
-      "version": "0.2.17",
+      "version": "0.2.18",
       "category": "development",
       "tags": [
         "delivery",
