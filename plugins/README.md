@@ -2,7 +2,7 @@
 
 Eight Claude Code plugins in one marketplace. Six of them form a delivery system that takes a work item from a tracker to a pull request. Two are small, always-available behaviours for how Claude answers.
 
-Short presentation: https://agenticdraft.github.io/plugins/
+Short presentation: https://agenticdraft.github.io/agentic-delivery-factory/
 
 **Everything here is checked by a script where a script can check it, and the limits are written next to the features.**
 

@@ -2,7 +2,7 @@
   "name": "agentic-core",
   "displayName": "Agentic Core",
   "description": "Agnostic delivery core: sequences stages, spawns pack adapters as subagents, reads the result envelope, and branches. Knows no tracker, SCM, design tool or browser by name.",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "author": {
     "name": "agenticDraft"
   }
