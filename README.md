@@ -1,6 +1,6 @@
 # agenticDraft/plugins — Claude Code plugins
 
-A Claude Code plugin marketplace with eight plugins: a delivery route that takes a work item from a tracker to a pull request (`agentic-core` and five packs), and two small behaviour plugins (`no-hallucinations`, `made-decision`).
+A Claude Code plugin marketplace with six plugins that form a delivery route: they take a work item from a tracker to a pull request (`agentic-core` and five packs). The behaviour plugins `no-hallucinations` and `made-decision` moved to [zmarkoni/plugins](https://github.com/zmarkoni/plugins) (marketplace `zmarkoni-plugins`).
 
 **Start here:** [`plugins/README.md`](plugins/README.md) describes the whole project: the problem, the plugins, the route, what it looks like and its limits. To use the delivery route in a project, follow [`plugins/getting-started.md`](plugins/getting-started.md). To install one plugin, add the marketplace and pick it:
 
@@ -9,7 +9,7 @@ A Claude Code plugin marketplace with eight plugins: a delivery route that takes
 /plugin install <plugin>@agenticdraft
 ```
 
-Each plugin has its own README under [`plugins/`](plugins/). [`example-project/`](example-project/) shows a per-project install through a committed `.claude/settings.json`.
+Each plugin has its own README under [`plugins/`](plugins/).
 
 ## Develop
 
@@ -46,8 +46,6 @@ Adding a plugin: create `plugins/<name>/.claude-plugin/plugin.json` and `plugins
 ```text
 .claude-plugin/marketplace.json          # the catalog, one entry per plugin
 plugins/
-├── no-hallucinations/                   # always-on truthfulness rules (hooks + skill)
-├── made-decision/                       # on-demand OOCEMR decision interview (skill + evals)
 ├── agentic-core/                        # delivery route driver and its checks
 ├── agentic-eds/                         # Edge Delivery platform pack (its `core` link points at agentic-core/shared)
 ├── agentic-jira/  agentic-github/       # tracker and SCM provider packs
@@ -56,7 +54,6 @@ scripts/                                 # run-tests.sh, check-plugin-versions.s
 .github/workflows/                       # one validate workflow per plugin group, plus the version check
 plugins/README.md                        # the whole project, described
 plugins/getting-started.md              # a new project's settings.json, install and first route run
-example-project/                         # per-project install via committed .claude/settings.json
 ```
 
 ## License

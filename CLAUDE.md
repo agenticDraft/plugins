@@ -80,11 +80,6 @@ until its own version moves, so a change there bumps the core and every pack.
   the human says yes. Never move or delete an existing tag; a fix is a new patch version.
 - The pull request description states the proposed tag.
 
-`no-hallucinations` and `made-decision` have no test runner: they keep scripted scenarios in
-`plugins/<plugin-name>/evals/evals.json` (query + expected-behavior checklist per scenario) —
-treat these as the spec to check a skill's behavior against when editing it, not as something
-invoked by a command in this repo.
-
 ## Adding a new plugin or skill
 
 **Check the official docs before starting, every time — do not rely on memory or on this
@@ -107,16 +102,6 @@ something that worked last month may have gained a new required field or a new d
    `.claude-plugin/marketplace.json`, mirroring the fields already there (`source` as a
    relative `./plugins/<name>` path, matching `homepage`/`repository` URLs).
 4. Run both validate commands above before committing.
-
-## The no-hallucinations plugin's hook/skill pattern
-
-`plugins/no-hallucinations/` injects its rules two ways — a `SessionStart` hook (full rules,
-once per session) and a `UserPromptSubmit` hook (one-line reminder every turn, to survive
-context compaction) — plus an on-demand `skills/be-honest/SKILL.md`. All three must say the
-same thing, so **`skills/be-honest/SKILL.md` is the single source of truth**:
-`scripts/inject-rules.sh` strips its YAML frontmatter and prints the body verbatim for the
-`SessionStart` hook (see `hooks/hooks.json`). When changing the rules, edit the skill file
-only — never hand-edit the hook's injected text separately, or the two will drift apart.
 
 ## The agentic-* delivery core (big picture)
 
@@ -153,7 +138,7 @@ only — never hand-edit the hook's injected text separately, or the two will dr
   no "repoint" command — run `claude plugin marketplace remove <name>`, then
   `claude plugin marketplace add <absolute-path> --scope user`. Note that `remove` also
   uninstalls that marketplace's plugins and drops them from `enabledPlugins`, so reinstall each
-  one afterwards. The `github`-source form used in `example-project/.claude/settings.json` is
+  one afterwards. A `github`-source marketplace is
   immune. The upside of a directory source: plugins load live from the working tree (hooks
   included, not from `~/.claude/plugins/cache/`), so edits apply on the next session with no
   reinstall.
@@ -167,7 +152,7 @@ only — never hand-edit the hook's injected text separately, or the two will dr
   is not a general JSON/settings validator. Don't point it at an arbitrary `settings.json`.
 - **A skill's `model:` frontmatter field only pins the model for the turn that invokes the
   skill.** The session model resumes on the very next message. It cannot be used to force an
-  entire multi-turn conversation (e.g. `made-decision`'s six-step interview) onto one model —
+  entire multi-turn conversation onto one model —
   document a manual `/model` recommendation in the plugin's README instead.
 
 ## Repository layout
@@ -175,22 +160,20 @@ only — never hand-edit the hook's injected text separately, or the two will dr
 ```text
 .claude-plugin/marketplace.json      # the catalog — one entry per plugin, source paths relative to repo root
 plugins/
-  no-hallucinations/                 # hook-driven, always-on truthfulness rules (see pattern above)
-  made-decision/                     # on-demand OOCEMR decision-making interview skill
   agentic-core/                      # delivery route driver; agentic-eds/jira/github/figma/playwright
   agentic-eds/ agentic-jira/ ...     #   are its platform and provider packs (see plugins/getting-started.md)
 scripts/                             # run-tests.sh, check-plugin-versions.sh
 .github/workflows/                   # validate-* per plugin group, check-plugin-versions
 plugins/getting-started.md           # new-project guide; plugins/README.md describes the whole project
-example-project/                     # reference for project-scoped install via committed .claude/settings.json
 ```
 
-`example-project/.claude/settings.json` demonstrates the `extraKnownMarketplaces` +
-`enabledPlugins` pattern for enabling a plugin for every collaborator who trusts the repo
-folder. It does not install the plugin: each collaborator runs
-`claude plugin install <name>@agenticdraft --scope project` once. The key in `extraKnownMarketplaces`, the part after `@` in `enabledPlugins`, and
-`marketplace.json`'s `name` field must all match exactly, or the plugin silently fails to
-resolve.
+A project enables plugins for every collaborator through a committed `.claude/settings.json`
+(`extraKnownMarketplaces` + `enabledPlugins`, see `plugins/getting-started.md`). It does not install
+them: each collaborator runs `claude plugin install <name>@agenticdraft --scope project` once. The key
+in `extraKnownMarketplaces`, the part after `@` in `enabledPlugins`, and `marketplace.json`'s `name`
+field must all match exactly, or the plugin silently fails to resolve.
+
+`no-hallucinations` and `made-decision` moved to `zmarkoni/plugins` (marketplace `zmarkoni-plugins`).
 
 Each `agentic-*` pack resolves its siblings by plugin `name` through `agentic-core`'s resolver, never by
 folder path, and `plugins/agentic-eds/core` is a symlink to `../agentic-core/shared`. Skills are

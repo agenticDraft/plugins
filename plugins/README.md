@@ -1,4 +1,4 @@
-# agenticDraft plugins — a delivery route and the behaviours around it
+# agenticDraft plugins — a delivery route
 
 Six Claude Code plugins in one marketplace, they form a delivery system that takes a work item from a tracker to a pull request.
 
@@ -11,12 +11,10 @@ Done by hand it is a checklist. Done by a single long prompt it drifts: the driv
 
 ## How it handles it
 
-1. **Behaviour that must hold on every turn is a hook.** `no-hallucinations` injects its rules at `SessionStart` and a one-line reminder on every prompt. A skill alone cannot do that: only its description stays in context, and the body loads when it is invoked.
-2. **Behaviour that needs your attention is a skill.** `made-decision` runs a six-step interview when you ask for it, and stays out of the way otherwise.
-3. **The delivery route is split into a driver and packs.** `agentic-core` runs the stages and names no product. A *platform pack* (`agentic-eds`) says what each stage means for an Edge Delivery project. Four *provider packs* fill the roles the stages call: tracker (`agentic-jira`), SCM (`agentic-github`), design (`agentic-figma`) and browser (`agentic-playwright`).
-4. **Every stage returns one shape.** The last thing a stage emits is a result envelope: `verdict: pass | warn | fail | question`, a one-line summary, the artifacts it wrote. The driver reads that and nothing else, so it cannot drift into re-doing a stage's work.
-5. **A run ends in exactly one of three states:** `delivered`, `blocked` or `failed`. `warn` is never terminal.
-6. **Decisions that can be scripts are scripts.** Validators, branch-name checks, readiness checks and gates run a script first; a model reviews only what the script cannot judge. Each script has a `.test.sh` beside it.
+1. **The delivery route is split into a driver and packs.** `agentic-core` runs the stages and names no product. A *platform pack* (`agentic-eds`) says what each stage means for an Edge Delivery project. Four *provider packs* fill the roles the stages call: tracker (`agentic-jira`), SCM (`agentic-github`), design (`agentic-figma`) and browser (`agentic-playwright`).
+2. **Every stage returns one shape.** The last thing a stage emits is a result envelope: `verdict: pass | warn | fail | question`, a one-line summary, the artifacts it wrote. The driver reads that and nothing else, so it cannot drift into re-doing a stage's work.
+3. **A run ends in exactly one of three states:** `delivered`, `blocked` or `failed`. `warn` is never terminal.
+4. **Decisions that can be scripts are scripts.** Validators, branch-name checks, readiness checks and gates run a script first; a model reviews only what the script cannot judge. Each script has a `.test.sh` beside it.
 
 ## The plugins
 
@@ -125,20 +123,7 @@ Of the 585 files, 445 are the five packs' copies of the core's own tests. Some c
 
 For a project that wants the delivery route, follow the [getting-started guide](getting-started.md): the `settings.json` that adds the marketplace at a tag, the credentials each provider pack needs, `/agentic-core:setup`, `/agentic-core:health`, then `/agentic-core:run-route <work item>`.
 
-For the two behaviour plugins:
-
-1. Add the marketplace and install what you want:
-
-   ```text
-   /plugin marketplace add agenticDraft/plugins
-   /plugin install no-hallucinations@agenticdraft
-   /plugin install made-decision@agenticdraft
-   ```
-
-2. Restart the session.
-3. Check it: `/plugin` lists the plugin as enabled. `claude --debug` shows whether a hook fired and what it printed.
-
-To enable a plugin for one repository, and for everyone who opens it, commit a `.claude/settings.json` instead. [`../example-project/`](../example-project/) shows how. The marketplace key and the part after `@` must both be `agenticdraft`, or the plugin silently fails to resolve.
+The behaviour plugins `no-hallucinations` and `made-decision` moved to [zmarkoni/plugins](https://github.com/zmarkoni/plugins) (marketplace `zmarkoni-plugins`).
 
 ## Limits you should know
 
@@ -147,8 +132,6 @@ To enable a plugin for one repository, and for everyone who opens it, commit a `
 - **Committing the settings does not install the packs.** Each collaborator runs `claude plugin install <pack>@agenticdraft --scope project` once per pack; the plugin-root registry is written by the first session after that. [The guide](getting-started.md)'s step 2 has the commands and the check.
 - **`setup` does not choose the browser pack.** Set `packs.browser` by hand.
 - **Pre-flight reads declarations only.** A tool missing from the machine is found by `health` or by the operation that needs it, not before the run starts.
-- **A hook adds text as conversation context.** A global `CLAUDE.md` goes into the system instructions. The docs do not say the two carry equal weight, and it has not been measured. That is why `no-hallucinations` repeats a reminder on every prompt.
-- **`made-decision` ships scripted scenarios in `evals/evals.json`.** They describe the expected behaviour; nothing in this repository runs them automatically.
 
 ## Why it is built this way
 
