@@ -1,18 +1,13 @@
 # agenticDraft plugins — a delivery route and the behaviours around it
 
-Eight Claude Code plugins in one marketplace. Six of them form a delivery system that takes a work item from a tracker to a pull request. Two are small, always-available behaviours for how Claude answers.
+Six Claude Code plugins in one marketplace, they form a delivery system that takes a work item from a tracker to a pull request.
 
 Short presentation: https://agenticdraft.github.io/agentic-delivery-factory/
 
-**Everything here is checked by a script where a script can check it, and the limits are written next to the features.**
-
 ## The problem it solves
 
-Two kinds of instruction get retyped in every session.
-
-The first is how Claude should answer: do not make things up, say when you are unsure, slow down on a decision. These live in a global `CLAUDE.md` or in the first message, and they drop out when you switch machines, share a repo, or the context is compacted. Nothing tells you they are gone.
-
-The second is how a piece of work gets delivered: read the ticket, plan, build, check it renders, lint, open the pull request, write back to the ticket. Done by hand it is a checklist. Done by a single long prompt it drifts: the driver re-does part of a step, reads files it should not, and branches on prose.
+How a piece of work gets delivered: read the ticket, plan, build, check it renders, lint, open the pull request, write back to the ticket. 
+Done by hand it is a checklist. Done by a single long prompt it drifts: the driver re-does part of a step, reads files it should not, and branches on prose.
 
 ## How it handles it
 
@@ -27,8 +22,6 @@ The second is how a piece of work gets delivered: read the ticket, plan, build, 
 
 | Plugin | Role | What it does | README |
 |---|---|---|---|
-| **no-hallucinations** | behaviour | Truthfulness rules for every response, through two hooks and a skill | [README](no-hallucinations/README.md) |
-| **made-decision** | behaviour | A six-step decision interview (Outcomes, Options, Consequences, Evaluate, Mitigate, Resolve) | [README](made-decision/README.md) |
 | **agentic-core** | driver | Runs the route, validates each result, ends in a terminal state. Skills `setup`, `health`, `run-route` | [README](agentic-core/README.md) |
 | **agentic-eds** | platform | Binds the fifteen route stages to an Edge Delivery project | [README](agentic-eds/README.md) |
 | **agentic-jira** | tracker | Fetch, comment on, attach to, list, update and create Jira work items | [README](agentic-jira/README.md) |
