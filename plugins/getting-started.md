@@ -1,14 +1,53 @@
 # Getting started: the delivery plugins in a new project
 
-This guide takes a project that has never used the delivery plugins to its first route run. It uses six plugins from the `agenticdraft` marketplace (`agenticDraft/plugins`):
+This guide takes a project that has never used the delivery plugins to its first route run: one work item, read from your tracker, turned into a pull request.
 
-- `agentic-core` — the route driver and its checks. Names no tracker, SCM, design tool or browser.
-- `agentic-eds` — the platform pack for an Edge Delivery project.
-- `agentic-jira`, `agentic-github`, `agentic-figma`, `agentic-playwright` — the tracker, SCM, design and browser provider packs.
+## The plugins and which ones you need
 
-A project enables every pack it uses. The driver starts each stage as `Skill(<pack>:<skill>)`, and a pack that is not loaded is reported as a contract violation, not worked around.
+All of them come from the `agenticdraft` marketplace (`agenticDraft/plugins`).
 
-`agentic-eds` is for an Edge Delivery project. For another platform, `/agentic-core:setup` can generate a platform pack from an interview; that path is not covered here.
+- `agentic-core` — **always.** The route driver: it runs the stages in order, checks every result and decides how the run ends. It names no tracker, SCM, design tool or browser.
+- `agentic-jira`, `agentic-github`, `agentic-figma`, `agentic-playwright` — **always, all four.** One provider pack per role: tracker, SCM, design and browser. `setup` picks one installed pack for every role and stops when a role has none, so `agentic-figma` must be installed even when no work item has a design. A Figma login is a different matter: see "When the design tool is needed" below.
+- `agentic-eds` — **only for an Edge Delivery Services (EDS) project.** It is the platform pack: it knows how such a project serves, lints and is built. For another platform, leave it out; `/agentic-core:setup` then generates a platform pack for your project from an interview. That path is not covered here.
+
+Every plugin the project enables must also be installed. The driver starts each stage from the pack that owns it, and a pack that is not loaded ends the run; it is never worked around.
+
+## How a run works, in short
+
+A run is one command, `/agentic-core:run-route <work item>`, typed by a person or started by CI. It goes through fixed stages in a fixed order:
+
+```text
+intake → readiness → extract → conventions → serve → baseline → prototype → verify-design
+       → plan → plan-gate → implement → verify → lint → publish-gate → deliver
+```
+
+- **intake** reads the work item from the tracker as untrusted text and records its facts.
+- **readiness**, **plan-gate** and **publish-gate** are gates: scripts check first, then a reviewing model looks only at what the scripts passed. A gate never changes the project.
+- Some stages run only when the item needs them. The conditions are evaluated once, right after intake, and a skipped stage hands over to the next one. With `agentic-eds`: `extract`, `prototype` and `verify-design` run only when the item has a design source or mentions a design; `baseline` runs only when the item names a component.
+- The working branch is created right after readiness; `deliver` opens the pull request.
+
+Before the first stage, the driver checks the project config, every pack, the tools and the credentials (pre-flight), and that the working tree has nothing uncommitted. A run ends in exactly one of three states:
+
+- `delivered` — the last stage passed and the pull request exists.
+- `blocked` — something is missing: an answer, a login, a tool. The run says what and where.
+- `failed` — a stage failed or broke its contract. The run names the stage.
+
+### When the design tool is needed
+
+`agentic-figma` reads designs through the Figma plugin's MCP tools. The driver checks for those tools only when the design stages will run, and an item that never runs them never needs a Figma account or login.
+
+Intake decides this from two facts, by literal word match, never by a model's judgement:
+
+- **design source** — the item carries a design reference, such as a Figma link.
+- **design mentioned** — the item's text contains one of the tracker pack's design words (`text_conventions.design_keywords` in its `pack.yaml`; for `agentic-jira` they include common words such as "layout" and "style", and block names such as "hero").
+
+| Design source | Design mentioned | What happens |
+| --- | --- | --- |
+| no | no | The design stages are skipped. No Figma login is needed. |
+| yes | yes or no | The design stages run. Without the Figma tools the run ends `blocked` before any work, with the remedy under `agentic-figma` below. |
+| no | yes | Readiness refuses the item: it asks for a visual change and gives nothing to compare against. |
+
+So an item without a design must also avoid those words. You do not need to learn the list: `write-specs` (step 7) runs the same extractor on the draft and names every word that matched.
 
 ## Before you start: what to prepare
 
@@ -16,7 +55,7 @@ Do this before step 1, so that `setup` never has to stop and wait for an account
 
 ### What each pack needs
 
-The block below is rendered from the packs' own manifests (`pack.yaml`), not written by hand, and a check fails when it differs from them. It lists, per pack, the variables and logins, the hosts, the tools on your machine and the conditions a run checks before it starts. Skip a pack's section only if the project does not use that pack.
+The block below is rendered from the packs' own manifests (`pack.yaml`), not written by hand, and a check fails when it differs from them. It lists, per pack, the variables and logins, the hosts, the tools on your machine and the conditions a run checks before it starts. Skip a pack's section only if the project does not use that pack (in practice: `agentic-eds` on a project that is not EDS).
 
 <!-- guide-declarations:begin — rendered by scripts/render-guide-declarations.sh from the packs' pack.yaml files; refresh it with --write, never edit it by hand -->
 
@@ -76,10 +115,12 @@ Committed on purpose; `setup` names the ones it wrote for you to commit before t
 
 <!-- guide-declarations:end -->
 
+In plain words, for the two `agentic-playwright` tools: `setup` does not offer to install them, because the pack declares no install. If `health` (step 5) reports `playwright` missing, run `npm ci` in the installed plugin's own folder (the `installPath` that `claude plugin list --json` shows for `agentic-playwright`). If it reports `chromium` missing, run the `npx` line above from anywhere.
+
 ### What no pack declares
 
-- **The tracker project** the work items live in, with its issue types.
-- **The tracker account id of everyone who may start a run.** `setup` leaves a placeholder for it in `.ai/project-config.yaml`, under `trigger.allowed_identities`; you fill it by hand. It is compared with the author of the comment that starts a run, so it is the form your tracker gives a comment author. No pack states that form yet: look at what your tracker reports for a comment author rather than guessing.
+- **The tracker project** the work items live in, with the issue types you will use. With `agentic-eds`, the readiness gate knows three types: a `Story` and a `Task` need a description and acceptance criteria; a `Bug` needs a description, a reproduction URL and reproduction steps. Every page an item points at must exist for the whole run. An item of any other type is refused.
+- **The tracker account id of everyone who may start a run from a tracker comment.** `setup` writes a placeholder for it in `.ai/project-config.yaml`, under `trigger.allowed_identities`, and you fill it by hand in step 4. Only the comment-triggered path (a token comment on the work item starts a headless run) compares it with the comment's author; a run you type in Claude Code does not read it. `setup` still checks that no placeholder is left, so fill it even if you never use that path. Use the form your tracker gives a comment's author; no pack states that form yet, so read it from your tracker rather than guessing.
 - **Admin rights on the repository's owner.** The platform pack's code-sync step is done in the browser on the owner, and only an owner administrator can finish it.
 - **Write access to the project's `.claude/` folder and to the plugin cache**, and a session that may leave the sandbox for the install lines in step 2. See "The sandbox" below.
 - **A headless run only:** the model credential the runner reads, `CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`), in the CI secret store. See "Before a headless run".
@@ -94,7 +135,7 @@ Two things stay outside the list on purpose. The package registry is not on it; 
 
 ## 1. Add the marketplaces and the plugins to the project's `settings.json`
 
-Commit this as `.claude/settings.json` at the project root, so every collaborator gets the same plugins:
+Write this as `.claude/settings.json` at the project root. You commit it in step 6, together with what `setup` writes, so every collaborator gets the same plugins:
 
 ```json
 {
@@ -120,7 +161,9 @@ Commit this as `.claude/settings.json` at the project root, so every collaborato
 }
 ```
 
-JSON allows no comments; the blank line only separates the packs from the plugins they need. Delete the lines of a pack the project does not use, and with `agentic-eds` the `aem-edge-delivery-services` line and the `adobe-skills` marketplace.
+JSON allows no comments; the blank line only separates the packs from the plugins they need.
+
+**Not an EDS project?** Delete three things: the `agentic-eds@agenticdraft` line, the `aem-edge-delivery-services@adobe-skills` line and the whole `adobe-skills` marketplace. Keep every other line: `setup` needs a pack for each of the four provider roles.
 
 - The key under `extraKnownMarketplaces`, the part after `@` in every `enabledPlugins` key, and the catalog's `name` (`agenticdraft`) must match exactly. A mismatch fails silently.
 - `ref` pins the marketplace to a tag, so a project does not move when `main` does. One tag pins the core and every pack together. Put the newest tag in place of `<newest tag>`. This command prints it:
@@ -132,16 +175,12 @@ JSON allows no comments; the blank line only separates the packs from the plugin
   The list is also at [github.com/agenticDraft/plugins/tags](https://github.com/agenticDraft/plugins/tags). This page names no tag itself, so it cannot point at an old one.
 - If `~/.claude/settings.json` also declares the `agenticdraft` marketplace with a different `ref`, the CLI refuses to move to another one. Make both files name the same tag.
 
-### Third-party plugins the project also uses
+### The two plugins from other marketplaces
 
-The packs lean on plugins from other marketplaces, and the project that developed them used a few more while building. None of them is an `agenticdraft` plugin; step 1's block turns on only those a pack needs.
+- `figma@claude-plugins-official` — the Figma MCP server that `agentic-figma` calls. Enable it even if no item has a design yet; you sign in only when one does (see "When the design tool is needed").
+- `aem-edge-delivery-services@adobe-skills` — Adobe's skills for writing blocks, styles and scripts. EDS projects only.
 
-#### Plugins a pack needs: commit them
-
-- `figma@claude-plugins-official` — the design tool's MCP server. `agentic-figma` calls it; without it the design stages stop.
-- `aem-edge-delivery-services@adobe-skills` — Adobe's skills for writing blocks, styles and scripts. Needed only next to `agentic-eds`.
-
-The block in step 1 already commits both. Delete the `aem-edge-delivery-services` line and the `adobe-skills` marketplace if the project does not use `agentic-eds`, and the `figma` line if it does not use `agentic-figma`.
+Notes on both:
 
 - **Every marketplace in a committed file carries a `ref`.** A committed file reaches every collaborator and every headless run, so an unpinned marketplace puts its default branch into all of them. A marketplace source takes a branch or a tag in `ref`, not a commit.
 - `<adobe-skills tag>`: `adobe/skills` tags each of its components separately (`web-cli-v2.0.0`), and a tag of any of them fixes the whole repository, catalog included. The tags page lists the newest component tag first, which is not what you want. Print the newest repository-wide tag instead, and move it by hand when the project wants a newer one:
@@ -150,35 +189,15 @@ The block in step 1 already commits both. Delete the `aem-edge-delivery-services
   git ls-remote --tags --refs --sort=-v:refname https://github.com/adobe/skills 'v*' | head -1 | cut -d/ -f3
   ```
 - `claude-plugins-official` is not declared under `extraKnownMarketplaces`. Claude Code adds Anthropic's official marketplace by itself the first time an interactive terminal session starts. On a machine that has never run one, such as a fresh CI runner, run `claude plugin marketplace add anthropics/claude-plugins-official` first.
-- Step 2's install applies to these two as well: `claude plugin install figma@claude-plugins-official --scope project` and `claude plugin install aem-edge-delivery-services@adobe-skills --scope project`.
-- **The plugins here also load into headless route runs.** The runner reads the project's settings, and every plugin `enabledPlugins` turns on that is installed on the machine runs in the session next to the packs (`agentic-core/shared/runner/route-agent.mjs`, `plugin-sources.mjs`). Its startup log lists both sets. A plugin with a `SessionStart` hook adds its text to every route session. If a run behaves differently after you enable one, disable it for that run's settings first.
+- **Every enabled plugin also loads into headless route runs.** The runner reads the project's settings, and every plugin `enabledPlugins` turns on that is installed on the machine runs in the session next to the packs (`agentic-core/shared/runner/route-agent.mjs`, `plugin-sources.mjs`). Its startup log lists both sets. A plugin with a `SessionStart` hook adds its text to every route session. If a run behaves differently after you enable one, disable it for that run's settings first.
 
-#### Plugins for working on the project: install them for yourself
+Other plugins that help while you work on the project, but that no pack needs, are listed at the end of this page.
 
-- `playwright@claude-plugins-official` — a browser MCP server, for looking at a page by hand. No pack calls it: `agentic-playwright` drives its own Chromium through the `playwright` library.
-- `skill-creator@claude-plugins-official` — creates and edits `SKILL.md` files and measures them.
-- `superpowers@claude-plugins-official` — brainstorming, planning, test-driven development and debugging workflows. It has a `SessionStart` hook.
-- `github@claude-plugins-official` — GitHub's MCP server: issues, pull requests, reviews.
-- `code-review@claude-plugins-official` — reviews a pull request or the current diff.
-- `commit-commands@claude-plugins-official` — commit, push and open a pull request in one command.
-- `claude-md-management@claude-plugins-official` — audits and updates `CLAUDE.md` files.
-- `diagram-design@diagram-design` — draws architecture, flow and sequence diagrams as HTML/SVG. Its marketplace (`cathrynlavery/diagram-design`) has no tags, so it cannot be pinned and stays out of the committed file.
-
-None of them is needed by a pack, so they stay out of the committed file and install at user scope, on your machine only. Run in your shell:
-
-```sh
-claude plugin marketplace add cathrynlavery/diagram-design
-claude plugin install diagram-design@diagram-design
-claude plugin install playwright@claude-plugins-official
-```
-
-and the same `claude plugin install` line for each other plugin you want. With no `--scope`, `install` writes to user scope (`~/.claude/settings.json`). A user-scope plugin also loads into a headless route run on that machine if the runner's settings enable it; the bullet above applies.
-
-## 2. Trust the folder and install the packs
+## 2. Trust the folder and install the plugins
 
 Open Claude Code in the project and accept the trust prompt for the folder. Project settings declare a marketplace and plugins, and Claude Code applies them only for a trusted folder.
 
-Committing `enabledPlugins` turns the packs on but does not install them on anyone's machine ([Install and manage plugins](https://code.claude.com/docs/en/discover-plugins#choose-an-install-scope)). On a machine that already knows the `agenticdraft` marketplace, the session starts with every pack reported `Plugin "agentic-<pack>" not cached at …` in the `/plugin` **Errors** tab, and no `.ai/` folder is written. So each collaborator runs this once, in a shell at the project root:
+Committing `enabledPlugins` turns the plugins on but does not install them on anyone's machine ([Install and manage plugins](https://code.claude.com/docs/en/discover-plugins#choose-an-install-scope)). On a machine that already knows the `agenticdraft` marketplace, the session starts with every pack reported `Plugin "agentic-<pack>" not cached at …` in the `/plugin` **Errors** tab, and no `.ai/` folder is written. So each collaborator runs this once, in a shell at the project root, outside the sandbox (the lines write into the project's `.claude/` and the plugin cache):
 
 ```sh
 claude plugin install agentic-core@agenticdraft --scope project
@@ -187,9 +206,11 @@ claude plugin install agentic-jira@agenticdraft --scope project
 claude plugin install agentic-github@agenticdraft --scope project
 claude plugin install agentic-figma@agenticdraft --scope project
 claude plugin install agentic-playwright@agenticdraft --scope project
+claude plugin install figma@claude-plugins-official --scope project
+claude plugin install aem-edge-delivery-services@adobe-skills --scope project
 ```
 
-Run these outside the sandbox: they write into the project's `.claude/` and the plugin cache. Run one line per pack the settings enable. Each prints `Successfully installed plugin: agentic-<pack>@agenticdraft (scope: project)`.
+Run one line per plugin the settings enable; on a project that is not EDS, leave out the `agentic-eds` and `aem-edge-delivery-services` lines. Each prints `Successfully installed plugin: <plugin> (scope: project)`.
 
 Check that it worked: every pack has a record whose `projectPath` is this project.
 
@@ -197,7 +218,7 @@ Check that it worked: every pack has a record whose `projectPath` is this projec
 claude plugin list --json | jq -r --arg p "$(pwd -P)" '.[] | select(.projectPath == $p) | .id'
 ```
 
-prints one `agentic-<pack>@agenticdraft` line per pack. A record for the same pack with another `projectPath` belongs to another project and does not count. Without `jq`, read the `id`, `scope` and `projectPath` fields in `claude plugin list --json` by eye.
+prints one line per installed plugin. A record for the same plugin with another `projectPath` belongs to another project and does not count. Without `jq`, read the `id`, `scope` and `projectPath` fields in `claude plugin list --json` by eye.
 
 `install --scope project` also rewrites `.claude/settings.json`: it reorders the keys and reformats the file, and the content stays the same. Commit the result in step 6.
 
@@ -225,13 +246,22 @@ In a running session, `/plugin install agentic-core@agenticdraft` does the same 
 
 **What it never asks:** a token, a password, an account id, the spec directory (always `.ai/specs`), or anything it derives from the git remote, such as the branch-name limit and the preview host suffix.
 
+**When it stops:** a role with no installed pack. It never writes a role as empty for you; install the missing pack (step 2) and run it again.
+
 **What it writes**, always adding and never removing or overwriting what you filled: the config; one placeholder per variable listed above in `.claude/settings.local.json`; the hosts in the committed `.claude/settings.json`; the working-file paths in `.gitignore`; and, for the platform pack, the site's links in the project README. It flags host names in the project's instruction files that no longer match the repository, and does not edit them.
 
 It ends with a report: the lines to fill, the files to commit, and that a new session is needed.
 
 ## 4. Fill in the placeholders and sign in
 
-`setup` names each file and line. In `.claude/settings.local.json` every variable holds `FILL-IN: <where to get it>`; replace it with the value yourself. For a variable that a login replaces (listed above), either fill it or log in. Sign in to the Figma plugin through `/mcp` as its session-tools entry says. Then `setup` checks that no placeholder is left. Never paste a token into chat.
+`setup` names each file and line. Each placeholder is the marker `FILL-IN:` followed by what goes there. Replace it with the value yourself, in the file; never paste a token into chat. There are two files:
+
+- `.claude/settings.local.json` — one entry under `env` per variable listed above. For a variable that a login replaces, either fill it or log in (for `GH_TOKEN`: `gh auth login`).
+- `.ai/project-config.yaml` — `trigger.allowed_identities` (see "What no pack declares").
+
+Then answer **Filled**: `setup` checks both files again and names any placeholder still left. If you answered **Later**, the files are not checked yet: when you are done, run `/agentic-core:setup` again and choose **re-detect**. It keeps what you filled and checks the placeholders again (**keep** stops without checking anything).
+
+Sign in to Figma (through `/mcp`, as the `agentic-figma` entry says) only when a work item has a design.
 
 Then **start a new session**: the credentials and the sandbox allowlist are read once, when a session starts.
 
@@ -241,7 +271,7 @@ Then **start a new session**: the credentials and the sandbox allowlist are read
 /agentic-core:health
 ```
 
-`health` reports what is loaded, which pack each role resolves to, each declared variable and host, and each pack's unmet preconditions with the remedy the pack states.
+`health` only reads and reports; it never installs, fixes or blocks anything. It lists what is loaded, whether the config validates, which pack each role resolves to, each pack's preconditions with their remedies, each variable and host, and each pack's session tools (those are checked by the run itself, not here). Its last result line is **green** or **not green**: green only when the config validates, every role resolves, and nothing is missing, unfilled, blocked or failed. On not green, do what the named remedy says and run `health` again before step 6.
 
 ## 6. Commit and push the files `setup` named
 
@@ -249,7 +279,7 @@ A run starts only on a working tree with nothing uncommitted. `setup`'s report l
 
 ## 7. Write the work item
 
-A run reads its work item from the tracker, with fixed patterns, and a readiness check accepts or refuses it before any work starts. Write the item with:
+A run reads its work item from the tracker, with fixed patterns, and the readiness gate accepts or refuses it before any work starts. Write the item with:
 
 ```text
 /agentic-core:write-specs
@@ -257,7 +287,9 @@ A run reads its work item from the tracker, with fixed patterns, and a readiness
 
 Describe what should change, and name the item's key if it already exists. `write-specs` writes a draft to `.ai/specs/<ITEM-KEY>/draft.md`, runs its checker on it until it passes, writes the item to the tracker through the tracker pack, and runs the checker again on the live item. It ends with the item's key and URL. If the tracker pack cannot write the item, it says why first and hands you the summary and description to paste into the tracker yourself.
 
-The item lives in the tracker project named under "What no pack declares", so that project and its issue types must exist first. Before the run, commit the draft and push it to the default branch. `.ai/specs/` is committed on purpose, and a run starts only when nothing differs from the default branch on the remote: a draft that is untracked, or committed but not pushed, makes it refuse to start (`refused: … changed: .ai/specs/<ITEM-KEY>/draft.md`).
+The item lives in the tracker project named under "What no pack declares", so that project and its issue types must exist first. An item with no design must not mention one (see "When the design tool is needed"); the checker names the words that matched.
+
+Before the run, commit the draft and push it to the default branch. `.ai/specs/` is committed on purpose, and a run starts only when nothing differs from the default branch on the remote: a draft that is untracked, or committed but not pushed, makes it refuse to start (`refused: … changed: .ai/specs/<ITEM-KEY>/draft.md`).
 
 ## 8. Make the first route run
 
@@ -265,7 +297,7 @@ The item lives in the tracker project named under "What no pack declares", so th
 /agentic-core:run-route <work item id or URL>
 ```
 
-Append `autonomous` to write blockers back to the work item instead of asking. A run ends in exactly one of three states: `delivered`, `blocked` or `failed`. A run that needs something this guide listed and you skipped ends `blocked` before it starts, with the pack's remedy.
+Only a person can start it: a model cannot call this command on its own. When a stage needs an answer, the run asks you; append `autonomous` to write blockers back to the work item instead of asking. The run ends in exactly one of `delivered`, `blocked` or `failed` (see "How a run works, in short"). A run that needs something this guide listed and you skipped ends `blocked` before it starts, with the pack's remedy. After `blocked` or `failed`, the run's state stays in `.ai/` for you to read; started again, a run younger than two hours resumes, and an older one asks whether to resume or start fresh.
 
 ## Before a headless run
 
@@ -290,8 +322,31 @@ does not say, stop and tell me what is missing instead of guessing. When step 2 
 
 Then start a second session and paste the same prompt with "step 3 only" in place of "steps 1 and 2 only" and without the last sentence. Fill in the placeholders yourself (step 4), open a third session, and continue with steps 5 to 8.
 
+## Optional: plugins for working on the project
+
+None of these is needed by a pack, so they stay out of the committed file and install at user scope, on your machine only:
+
+- `playwright@claude-plugins-official` — a browser MCP server, for looking at a page by hand. No pack calls it: `agentic-playwright` drives its own Chromium through the `playwright` library.
+- `skill-creator@claude-plugins-official` — creates and edits `SKILL.md` files and measures them.
+- `superpowers@claude-plugins-official` — brainstorming, planning, test-driven development and debugging workflows. It has a `SessionStart` hook.
+- `github@claude-plugins-official` — GitHub's MCP server: issues, pull requests, reviews.
+- `code-review@claude-plugins-official` — reviews a pull request or the current diff.
+- `commit-commands@claude-plugins-official` — commit, push and open a pull request in one command.
+- `claude-md-management@claude-plugins-official` — audits and updates `CLAUDE.md` files.
+- `diagram-design@diagram-design` — draws architecture, flow and sequence diagrams as HTML/SVG. Its marketplace (`cathrynlavery/diagram-design`) has no tags, so it cannot be pinned and stays out of the committed file.
+
+Run in your shell:
+
+```sh
+claude plugin marketplace add cathrynlavery/diagram-design
+claude plugin install diagram-design@diagram-design
+claude plugin install playwright@claude-plugins-official
+```
+
+and the same `claude plugin install` line for each other plugin you want. With no `--scope`, `install` writes to user scope (`~/.claude/settings.json`). A user-scope plugin also loads into a headless route run on that machine if the runner's settings enable it (see "Every enabled plugin also loads into headless route runs" in step 1).
+
 ## What this guide has not verified
 
-The block under "What each pack needs" is checked against the manifests by `scripts/check-getting-started.sh`. The text around it is not: it describes `setup`'s questions and writes, and `write-specs`' steps, from reading their skills, not from a run. A run from a project that did not build the plugins, following only this page, has not been made yet. A step that needs something this page does not say is a defect in the page.
+The block under "What each pack needs" is checked against the manifests by `scripts/check-getting-started.sh`. The text around it is not: it describes `setup`'s questions and writes, `health`'s report, `write-specs`' steps and how a run proceeds, from reading their skills and the pack manifests, not from a run. A run from a project that did not build the plugins, following only this page, has not been made yet. A step that needs something this page does not say is a defect in the page.
 
-Measured earlier: step 2 on a machine that already knew the `agenticdraft` marketplace (before the install every pack was reported `not cached`; after the six `install --scope project` lines there were six records for the project, and the next session wrote six roots into `.ai/run-context/plugin-roots/`). Not measured: a machine that has never added the marketplace; the committed block with the `adobe-skills` `ref`; whether a `~/.claude/settings.json` that declares `adobe-skills` without that `ref` conflicts with it, as step 1 says happens for `agenticdraft`; the user-scope install lines; a headless route run with those plugins enabled; and `github.com` as an allowed host for a project whose git remote is HTTPS.
+Measured earlier: step 2 on a machine that already knew the `agenticdraft` marketplace (before the install every pack was reported `not cached`; after the six `install --scope project` lines there were six records for the project, and the next session wrote six roots into `.ai/run-context/plugin-roots/`). Not measured: a machine that has never added the marketplace; the two `install` lines for `figma` and `aem-edge-delivery-services` inside step 2's block; the committed block with the `adobe-skills` `ref`; whether a `~/.claude/settings.json` that declares `adobe-skills` without that `ref` conflicts with it, as step 1 says happens for `agenticdraft`; the user-scope install lines; a headless route run with those plugins enabled; a project without `agentic-eds`; and `github.com` as an allowed host for a project whose git remote is HTTPS.
